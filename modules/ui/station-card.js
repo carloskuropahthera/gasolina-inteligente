@@ -68,7 +68,9 @@ async function openCard(station) {
   _drawer.innerHTML = buildCardHTML(station, ft, history, nearby, stats, anomaly, cheapestNearby, mostExpNearby, allData);
 
   attachCardListeners(station);
-  if (history.length >= 2) renderChart(station, ft, history);
+  if (history.length >= 2) {
+    renderChart(station, ft, history);
+  }
 
   log.info(`Station card opened: ${station.name}`);
 }
@@ -124,12 +126,23 @@ function buildCardHTML(station, ft, history, nearby, stats, anomaly, cheapestNea
       })()
     : '';
 
-  const historyInfo = history.length < 3
+  const historyInfo = history.length === 0
+    ? `<div class="chart-empty-state">
+         <div class="chart-empty-icon">📊</div>
+         <div class="chart-empty-msg">No history data yet</div>
+         <div class="chart-empty-sub">Price history will appear once the scraper has run at least twice for this station.</div>
+       </div>`
+    : history.length < 2
     ? `<p class="chart-building">
-         📊 Building history — scraper has been running ${history.length} day(s).
-         Full charts available after 7 days.
+         📊 Building history — scraper has captured ${history.length} data point so far.
+         Charts require at least 2 points.
        </p>`
-    : `<canvas id="station-chart" height="200"></canvas>`;
+    : history.length < 7
+    ? `<canvas id="station-chart" style="width:100%;height:200px"></canvas>
+       <p class="chart-building muted" style="font-size:0.8em;margin-top:4px">
+         📊 ${history.length} day(s) of history — full trend visible after 7 days.
+       </p>`
+    : `<canvas id="station-chart" style="width:100%;height:200px"></canvas>`;
 
   const nearbyList = nearby.length === 0 ? '<p class="muted">No nearby stations in matrix</p>'
     : `<div class="nearby-list">
@@ -312,6 +325,7 @@ function renderChart(station, ft, history) {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: { legend: { labels: { color: '#EEEEEE' } } },
       scales: {
         x: { ticks: { color: '#AAAAAA' }, grid: { color: '#2A2A4A' } },

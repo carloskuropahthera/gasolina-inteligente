@@ -173,7 +173,8 @@ function renderTable(rows, fuelType, greenThreshold, redThreshold, anomalyIds, s
   const th = (key, label) => {
     const active = _sortKey === key;
     const arrow  = active ? (_sortDir === 'asc' ? ' ▲' : ' ▼') : '';
-    return `<th class="sortable${active ? ' sort-active' : ''}" data-sort="${key}">${label}${arrow}</th>`;
+    const ariaSort = active ? (_sortDir === 'asc' ? 'ascending' : 'descending') : 'none';
+    return `<th class="sortable${active ? ' sort-active' : ''}" data-sort="${key}" role="columnheader" aria-sort="${ariaSort}" tabindex="0">${label}${arrow}</th>`;
   };
 
   const bodyRows = rows.map((s, i) => {
@@ -193,7 +194,11 @@ function renderTable(rows, fuelType, greenThreshold, redThreshold, anomalyIds, s
     };
 
     return `<tr class="list-row${isSelected ? ' row-selected' : ''}${isAnomaly ? ' row-anomaly' : ''}"
-              data-id="${s.id}" data-idx="${i}">
+              data-id="${s.id}" data-idx="${i}"
+              tabindex="0"
+              role="row"
+              aria-selected="${isSelected ? 'true' : 'false'}"
+              aria-label="${esc(s.name)}, ${esc(s.brand)}, ${esc(s.city)}, ${esc(s.state)}">
       <td class="row-num">${(_currentPage-1)*PAGE_SIZE + i + 1}</td>
       <td class="row-name">${isAnomaly ? '<span class="anomaly-icon" title="Anomaly detected">⚠️</span>' : ''}${esc(s.name)}</td>
       <td><span class="brand-dot" style="background:${getBrandColor(s.brand)}"></span>${esc(s.brand)}</td>
@@ -208,14 +213,14 @@ function renderTable(rows, fuelType, greenThreshold, redThreshold, anomalyIds, s
 
   return `
     <div class="table-wrap">
-      <table class="price-table">
-        <thead><tr>
+      <table class="price-table" role="grid" aria-label="Gas station price list">
+        <thead role="rowgroup"><tr role="row">
           ${th('name','Station')}${th('brand','Brand')}
           ${th('city','City')}${th('state','State')}
           ${th('regular','Regular')}${th('premium','Premium')}${th('diesel','Diesel')}
           ${th('distanceKm','Dist.')}
         </tr></thead>
-        <tbody>${bodyRows}</tbody>
+        <tbody role="rowgroup">${bodyRows}</tbody>
       </table>
     </div>`;
 }
@@ -272,6 +277,25 @@ function attachListeners(sorted, fuelType, summary) {
       const station = getState().mergedData.find(s => s.id === id);
       if (station) setState({ selectedStation: station });
     });
+    // Keyboard navigation: Enter or Space activates the focused row
+    row.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const id      = row.dataset.id;
+        const station = getState().mergedData.find(s => s.id === id);
+        if (station) setState({ selectedStation: station });
+      }
+    });
+  });
+
+  // Sort headers: also support keyboard activation
+  _container.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        th.click();
+      }
+    });
   });
 
   // Pagination
@@ -311,7 +335,9 @@ function sortData(data, fuelType) {
 function highlightSelectedRow() {
   const selectedId = getState().selectedStation?.id;
   _container?.querySelectorAll('.list-row,.station-card-mini').forEach(row => {
-    row.classList.toggle('row-selected', row.dataset.id === selectedId);
+    const isSelected = row.dataset.id === selectedId;
+    row.classList.toggle('row-selected', isSelected);
+    row.setAttribute('aria-selected', isSelected ? 'true' : 'false');
   });
 }
 
