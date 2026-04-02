@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="description" content="Gasolina Inteligente — Inteligencia de precios de combustible en México">
+  <title>Gasolina Inteligente</title>
+
+  <!-- JSZip — for ZIP downloads -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Leaflet CSS + JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Leaflet MarkerCluster CSS + JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+  <!-- App styles -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ═══ HEADER ══════════════════════════════════════════════════ -->
+  <header id="app-header">
+    <button class="icon-btn" id="btn-toggle-sidebar" title="Filtros" style="font-size:16px">☰</button>
+
+    <div class="logo">⛽ Gasolina <span>Inteligente</span></div>
+
+    <div id="mock-banner">⚠️ MOCK MODE</div>
+
+    <div id="search-wrap">
+      <input
+        id="search-input"
+        type="text"
+        placeholder="Buscar estación, ciudad, marca…"
+        autocomplete="off"
+      >
+      <div id="search-dropdown"></div>
+    </div>
+
+    <div id="status-dot" class="ok" title="Ready"></div>
+
+    <div class="header-actions">
+      <!-- Location -->
+      <button class="icon-btn" id="btn-location" title="Mi ubicación">📍</button>
+
+      <!-- Anomalies -->
+      <button class="icon-btn" id="btn-anomaly" title="Anomalías de precios">
+        ⚠️
+        <span class="badge" id="anomaly-badge"></span>
+      </button>
+
+      <!-- Scraper -->
+      <button class="icon-btn" id="btn-scraper" title="Panel del scraper">📅</button>
+
+      <!-- Dev Panel (Ctrl+Shift+D) -->
+      <button class="icon-btn" id="btn-dev" title="Dev Panel (Ctrl+Shift+D)" style="font-size:14px">🛠</button>
+    </div>
+  </header>
+
+  <!-- ═══ MAIN AREA ════════════════════════════════════════════════ -->
+  <div id="main-area">
+
+    <!-- Filters Sidebar -->
+    <aside id="sidebar"></aside>
+
+    <!-- Map -->
+    <div id="map">
+      <div id="map-container"></div>
+      <!-- Mobile scroll hint: floats at bottom of map, hides when price list is visible -->
+      <button id="btn-scroll-to-list" class="scroll-to-list-btn" aria-label="Ver lista de precios">
+        ▼ Price List
+      </button>
+    </div>
+
+    <!-- Price List Panel -->
+    <section id="price-list-panel">
+      <div id="price-list-container"></div>
+    </section>
+
+  </div><!-- /main-area -->
+
+</div><!-- /app -->
+
+<!-- ═══ STATION DETAIL DRAWER ════════════════════════════════════ -->
+<div id="station-drawer"></div>
+
+<!-- ═══ ANOMALY PANEL ════════════════════════════════════════════ -->
+<div id="anomaly-panel" class="slide-panel"></div>
+
+<!-- ═══ SCRAPER PANEL ════════════════════════════════════════════ -->
+<div id="scraper-panel" class="slide-panel"></div>
+
+<!-- ═══ DEV PANEL ════════════════════════════════════════════════ -->
+<div id="dev-panel"></div>
+
+<!-- ═══ LOADING OVERLAY ══════════════════════════════════════════ -->
+<div id="loading-overlay">
+  <div id="loading-label">⛽ Gasolina Inteligente</div>
+  <div class="spinner"></div>
+  <div id="loading-msg">Cargando…</div>
+</div>
+
+<!-- ═══ TOAST CONTAINER ══════════════════════════════════════════ -->
+<div id="toast-container"></div>
+
+<!-- ═══ APP ENTRY ════════════════════════════════════════════════ -->
+<script type="module" src="app.js?v=9"></script>
+
+</body>
+</html>

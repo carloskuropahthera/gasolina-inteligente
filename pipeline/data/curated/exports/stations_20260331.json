@@ -1,0 +1,1156 @@
+{
+  "exported_at": "2026-03-31T02:03:53.408524+00:00",
+  "total": 50,
+  "stations": [
+    {
+      "master_id": "master_cre_ES-01-CHI-00006",
+      "pl_number": "ES-01-CHI-00006",
+      "canonical_name": "CENTRO GASOLINERA POSADA",
+      "canonical_brand": "TOTALENERGIES",
+      "canonical_address": "AVENIDA. EJE VIAL SUR URIAS 327",
+      "canonical_municipality": "NUEVA ALBANIA",
+      "canonical_state": "CHIHUAHUA",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00006"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289493+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-CHI-00013",
+      "pl_number": "ES-01-CHI-00013",
+      "canonical_name": "CENTRO GASOLINERA RIVERA",
+      "canonical_brand": "TOTALENERGIES",
+      "canonical_address": "AVENIDA. CALZADA REPUBLICA UNIDA DE TANZANIA 3493",
+      "canonical_municipality": "NUEVA BULGARIA",
+      "canonical_state": "CHIHUAHUA",
+      "canonical_zip": "22642",
+      "lat": 14.600183,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00013"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289656+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-CHI-00041",
+      "pl_number": "ES-01-CHI-00041",
+      "canonical_name": "BELTRAN GASOLINERA SUR",
+      "canonical_brand": "TOTALENERGIES",
+      "canonical_address": "AVENIDA. CONTINUACION NORTE ARIAS 317",
+      "canonical_municipality": "NUEVA COSTA RICA",
+      "canonical_state": "CHIHUAHUA",
+      "canonical_zip": "06523",
+      "lat": 26.3356065,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00041"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290502+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-CHI-00034",
+      "pl_number": "ES-01-CHI-00034",
+      "canonical_name": "ABREU GASOLINERA NORTE",
+      "canonical_brand": "TOTALENERGIES",
+      "canonical_address": "AVENIDA. RETORNO MOLINA 598",
+      "canonical_municipality": "SAN GEORGINA LOS BAJOS",
+      "canonical_state": "CHIHUAHUA",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00034"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290286+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-CHI-00020",
+      "pl_number": "ES-01-CHI-00020",
+      "canonical_name": "GASOLINERA NORTE PEDROZA",
+      "canonical_brand": "TOTALENERGIES",
+      "canonical_address": "AVENIDA. RETORNO TURKMENISTAN 882",
+      "canonical_municipality": "SAN LUZ LOS ALTOS",
+      "canonical_state": "CHIHUAHUA",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00020"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289934+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-CHI-00027",
+      "pl_number": "ES-01-CHI-00027",
+      "canonical_name": "CENTRO COVARRUBIAS GASOLINERA",
+      "canonical_brand": "TOTALENERGIES",
+      "canonical_address": "AVENIDA. DIAGONAL CASANOVA 526",
+      "canonical_municipality": "SAN RUBY LOS BAJOS",
+      "canonical_state": "CHIHUAHUA",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00027"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290134+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-CHI-00048",
+      "pl_number": "ES-01-CHI-00048",
+      "canonical_name": "CRUZ GASOLINERA NORTE",
+      "canonical_brand": "TOTALENERGIES",
+      "canonical_address": "AVENIDA. CALZADA CHIAPAS 6789",
+      "canonical_municipality": "VIEJA ALBANIA",
+      "canonical_state": "CHIHUAHUA",
+      "canonical_zip": "27023",
+      "lat": NaN,
+      "lng": -106.135035,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00048"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290664+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-CIU-00021",
+      "pl_number": "ES-01-CIU-00021",
+      "canonical_name": "CENTRO ESQUIBEL GASOLINERA",
+      "canonical_brand": "PEMEX",
+      "canonical_address": "AVENIDA. CORREDOR URRUTIA 2842",
+      "canonical_municipality": "NUEVA ITALIA",
+      "canonical_state": "CIUDAD DE MEXICO",
+      "canonical_zip": "28057",
+      "lat": 23.597247,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00021"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289968+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-CIU-00049",
+      "pl_number": "ES-01-CIU-00049",
+      "canonical_name": "GASOLINERA MONROY ORIENTE",
+      "canonical_brand": "PEMEX",
+      "canonical_address": "AVENIDA. DIAGONAL PORTILLO 1126",
+      "canonical_municipality": "NUEVA REPUBLICA DE MACEDONIA DEL NORTE",
+      "canonical_state": "CIUDAD DE MEXICO",
+      "canonical_zip": NaN,
+      "lat": 28.988913,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00049"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290686+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-CIU-00042",
+      "pl_number": "ES-01-CIU-00042",
+      "canonical_name": "CENTRO FRANCO GASOLINERA",
+      "canonical_brand": "PEMEX",
+      "canonical_address": "AVENIDA. VIADUCTO ORTIZ 7898",
+      "canonical_municipality": "SAN ALTA GRACIA LOS ALTOS",
+      "canonical_state": "CIUDAD DE MEXICO",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00042"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290525+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-CIU-00035",
+      "pl_number": "ES-01-CIU-00035",
+      "canonical_name": "ESTRADA GASOLINERA NORTE",
+      "canonical_brand": "PEMEX",
+      "canonical_address": "AVENIDA. PROLONGACION VERACRUZ DE IGNACIO DE LA LLAVE 84299",
+      "canonical_municipality": "SAN ISAAC DE LA MONTANA",
+      "canonical_state": "CIUDAD DE MEXICO",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00035"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290312+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-CIU-00014",
+      "pl_number": "ES-01-CIU-00014",
+      "canonical_name": "GASOLINERA OLVERA ORIENTE",
+      "canonical_brand": "PEMEX",
+      "canonical_address": "AVENIDA. PROLONGACION SINGAPUR 2159",
+      "canonical_municipality": "SAN PILAR DE LA MONTANA",
+      "canonical_state": "CIUDAD DE MEXICO",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00014"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289679+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-CIU-00028",
+      "pl_number": "ES-01-CIU-00028",
+      "canonical_name": "CENTRO CRUZ GASOLINERA",
+      "canonical_brand": "PEMEX",
+      "canonical_address": "AVENIDA. PROLONGACION GALVEZ 2684",
+      "canonical_municipality": "SAN SALMA LOS ALTOS",
+      "canonical_state": "CIUDAD DE MEXICO",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00028"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290157+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-CIU-00000",
+      "pl_number": "ES-01-CIU-00000",
+      "canonical_name": "BOTELLO GASOLINERA SUR",
+      "canonical_brand": "PEMEX",
+      "canonical_address": "AVENIDA. PERIFERICO ADAME 160",
+      "canonical_municipality": "VIEJA MALTA",
+      "canonical_state": "CIUDAD DE MEXICO",
+      "canonical_zip": "84473",
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00000"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.288285+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-CIU-00007",
+      "pl_number": "ES-01-CIU-00007",
+      "canonical_name": "ESTRADA GASOLINERA SUR",
+      "canonical_brand": "PEMEX",
+      "canonical_address": "AVENIDA. DIAGONAL NORTE JAQUEZ 506",
+      "canonical_municipality": "VIEJA MYANMAR",
+      "canonical_state": "CIUDAD DE MEXICO",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00007"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289515+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-EST-00038",
+      "pl_number": "ES-01-EST-00038",
+      "canonical_name": "GASOLINERA MONTANO NORTE",
+      "canonical_brand": "BP",
+      "canonical_address": "AVENIDA. PERIFERICO ACOSTA 8011",
+      "canonical_municipality": "NUEVA GABON",
+      "canonical_state": "ESTADO DE MEXICO",
+      "canonical_zip": "18117",
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00038"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290403+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-EST-00045",
+      "pl_number": "ES-01-EST-00045",
+      "canonical_name": "GASOLINERA ORIENTE ROBLEDO",
+      "canonical_brand": "BP",
+      "canonical_address": "AVENIDA. CORREDOR FEDERACION DE RUSIA 011",
+      "canonical_municipality": "NUEVA KENYA",
+      "canonical_state": "ESTADO DE MEXICO",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00045"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290597+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-EST-00024",
+      "pl_number": "ES-01-EST-00024",
+      "canonical_name": "GASOLINERA ORIENTE QUINONEZ",
+      "canonical_brand": "BP",
+      "canonical_address": "AVENIDA. PROLONGACION VERACRUZ DE IGNACIO DE LA LLAVE 69044",
+      "canonical_municipality": "NUEVA PALAU",
+      "canonical_state": "ESTADO DE MEXICO",
+      "canonical_zip": "62860",
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00024"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290067+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-EST-00017",
+      "pl_number": "ES-01-EST-00017",
+      "canonical_name": "GASOLINERA HUERTA ORIENTE",
+      "canonical_brand": "BP",
+      "canonical_address": "AVENIDA. CALLEJON COLIMA 0685",
+      "canonical_municipality": "SAN AUGUSTO LOS ALTOS",
+      "canonical_state": "ESTADO DE MEXICO",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00017"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289829+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-EST-00003",
+      "pl_number": "ES-01-EST-00003",
+      "canonical_name": "CENTRO GASOLINERA QUINTERO",
+      "canonical_brand": "BP",
+      "canonical_address": "AVENIDA. AMPLIACION PEREA 5451",
+      "canonical_municipality": "SAN JESUS LOS ALTOS",
+      "canonical_state": "ESTADO DE MEXICO",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": -113.188696,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00003"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289415+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-EST-00010",
+      "pl_number": "ES-01-EST-00010",
+      "canonical_name": "GASOLINERA NORTE SARABIA",
+      "canonical_brand": "BP",
+      "canonical_address": "AVENIDA. PERIFERICO DIAZ 0755",
+      "canonical_municipality": "SAN MARIANA DE LA MONTANA",
+      "canonical_state": "ESTADO DE MEXICO",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00010"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289585+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-EST-00031",
+      "pl_number": "ES-01-EST-00031",
+      "canonical_name": "GASOLINERA ORIENTE YANEZ",
+      "canonical_brand": "BP",
+      "canonical_address": "AVENIDA. PEATONAL LESOTHO 57912",
+      "canonical_municipality": "VIEJA SAN VICENTE Y LAS GRANADINAS",
+      "canonical_state": "ESTADO DE MEXICO",
+      "canonical_zip": "82352",
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00031"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290220+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-GUA-00047",
+      "pl_number": "ES-01-GUA-00047",
+      "canonical_name": "CENTRO CORRALES GASOLINERA",
+      "canonical_brand": "G500",
+      "canonical_address": "AVENIDA. ANDADOR SUR ZAMORA 5081",
+      "canonical_municipality": "NUEVA RUMANIA",
+      "canonical_state": "GUANAJUATO",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00047"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290642+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-GUA-00033",
+      "pl_number": "ES-01-GUA-00033",
+      "canonical_name": "GASOLINERA SALDIVAR SUR",
+      "canonical_brand": "G500",
+      "canonical_address": "AVENIDA. CALLE MEXICO 13758",
+      "canonical_municipality": "NUEVA SUDAN DEL SUR",
+      "canonical_state": "GUANAJUATO",
+      "canonical_zip": "41693",
+      "lat": NaN,
+      "lng": -91.171232,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00033"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290262+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-GUA-00005",
+      "pl_number": "ES-01-GUA-00005",
+      "canonical_name": "GASOLINERA MATOS ORIENTE",
+      "canonical_brand": "G500",
+      "canonical_address": "AVENIDA. CALZADA SUR LEBRON 60923",
+      "canonical_municipality": "SAN ASUNCION LOS ALTOS",
+      "canonical_state": "GUANAJUATO",
+      "canonical_zip": "45172",
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00005"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289470+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-GUA-00026",
+      "pl_number": "ES-01-GUA-00026",
+      "canonical_name": "GASOLINERA LIRA ORIENTE",
+      "canonical_brand": "G500",
+      "canonical_address": "AVENIDA. AMPLIACION SUR ZUNIGA 779",
+      "canonical_municipality": "SAN FELIPE LOS ALTOS",
+      "canonical_state": "GUANAJUATO",
+      "canonical_zip": "01556",
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00026"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290111+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-GUA-00019",
+      "pl_number": "ES-01-GUA-00019",
+      "canonical_name": "GASOLINERA LAUREANO ORIENTE",
+      "canonical_brand": "G500",
+      "canonical_address": "AVENIDA. PERIFERICO TLAXCALA 7384",
+      "canonical_municipality": "VIEJA ALEMANIA",
+      "canonical_state": "GUANAJUATO",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00019"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289904+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-GUA-00040",
+      "pl_number": "ES-01-GUA-00040",
+      "canonical_name": "CENTRO GASOLINERA LAUREANO",
+      "canonical_brand": "G500",
+      "canonical_address": "AVENIDA. CORREDOR SUR CARRERA 35758",
+      "canonical_municipality": "VIEJA BELGICA",
+      "canonical_state": "GUANAJUATO",
+      "canonical_zip": "15394",
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00040"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290479+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-GUA-00012",
+      "pl_number": "ES-01-GUA-00012",
+      "canonical_name": "ARRIAGA CENTRO GASOLINERA",
+      "canonical_brand": "G500",
+      "canonical_address": "AVENIDA. ANDADOR AUSTRALIA 923",
+      "canonical_municipality": "VIEJA CHAD",
+      "canonical_state": "GUANAJUATO",
+      "canonical_zip": "16725",
+      "lat": 28.14314,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00012"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289631+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-JAL-00015",
+      "pl_number": "ES-01-JAL-00015",
+      "canonical_name": "BUSTOS CENTRO GASOLINERA",
+      "canonical_brand": "OXXO GAS",
+      "canonical_address": "AVENIDA. CONTINUACION MOZAMBIQUE 0072",
+      "canonical_municipality": "NUEVA GEORGIA",
+      "canonical_state": "JALISCO",
+      "canonical_zip": "83826",
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00015"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289703+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-JAL-00001",
+      "pl_number": "ES-01-JAL-00001",
+      "canonical_name": "ALMANZA GASOLINERA NORTE",
+      "canonical_brand": "OXXO GAS",
+      "canonical_address": "AVENIDA. DIAGONAL BULGARIA 43066",
+      "canonical_municipality": "SAN BIANCA LOS BAJOS",
+      "canonical_state": "JALISCO",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00001"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289282+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-JAL-00043",
+      "pl_number": "ES-01-JAL-00043",
+      "canonical_name": "CENTRO GASOLINERA TORO",
+      "canonical_brand": "OXXO GAS",
+      "canonical_address": "AVENIDA. AMPLIACION NORTE ROJAS 82321",
+      "canonical_municipality": "SAN CONCHITA DE LA MONTANA",
+      "canonical_state": "JALISCO",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00043"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290550+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-JAL-00029",
+      "pl_number": "ES-01-JAL-00029",
+      "canonical_name": "GASOLINERA POLANCO SUR",
+      "canonical_brand": "OXXO GAS",
+      "canonical_address": "AVENIDA. CIRCUNVALACION APODACA 893",
+      "canonical_municipality": "SAN FRANCISCO JAVIER DE LA MONTANA",
+      "canonical_state": "JALISCO",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00029"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290178+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-JAL-00036",
+      "pl_number": "ES-01-JAL-00036",
+      "canonical_name": "GASOLINERA MESA NORTE",
+      "canonical_brand": "OXXO GAS",
+      "canonical_address": "AVENIDA. CIRCUNVALACION ALEMANIA 3768",
+      "canonical_municipality": "SAN GERONIMO LOS BAJOS",
+      "canonical_state": "JALISCO",
+      "canonical_zip": "85529",
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00036"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290342+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-JAL-00008",
+      "pl_number": "ES-01-JAL-00008",
+      "canonical_name": "ABREU GASOLINERA NORTE",
+      "canonical_brand": "OXXO GAS",
+      "canonical_address": "AVENIDA. BOULEVARD GUERRERO 021",
+      "canonical_municipality": "VIEJA GUINEA",
+      "canonical_state": "JALISCO",
+      "canonical_zip": "78846",
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00008"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289537+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-JAL-00022",
+      "pl_number": "ES-01-JAL-00022",
+      "canonical_name": "CENTRO GASOLINERA RUBIO",
+      "canonical_brand": "OXXO GAS",
+      "canonical_address": "AVENIDA. CALZADA ANGOLA 4124",
+      "canonical_municipality": "VIEJA PAKISTAN",
+      "canonical_state": "JALISCO",
+      "canonical_zip": NaN,
+      "lat": 16.1344215,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00022"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290011+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-NUE-00023",
+      "pl_number": "ES-01-NUE-00023",
+      "canonical_name": "CENTRO FIGUEROA GASOLINERA",
+      "canonical_brand": "SHELL",
+      "canonical_address": "AVENIDA. CALLEJON COLUNGA 753",
+      "canonical_municipality": "NUEVA GUYANA",
+      "canonical_state": "NUEVO LEON",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": -91.407749,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00023"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290041+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-NUE-00009",
+      "pl_number": "ES-01-NUE-00009",
+      "canonical_name": "CENTRO GASOLINERA ROMO",
+      "canonical_brand": "SHELL",
+      "canonical_address": "AVENIDA. PROLONGACION VAZQUEZ 13961",
+      "canonical_municipality": "NUEVA KIRIBATI",
+      "canonical_state": "NUEVO LEON",
+      "canonical_zip": "44082",
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00009"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289560+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-NUE-00030",
+      "pl_number": "ES-01-NUE-00030",
+      "canonical_name": "GASOLINERA ROLON SUR",
+      "canonical_brand": "SHELL",
+      "canonical_address": "AVENIDA. CERRADA FUENTES 128",
+      "canonical_municipality": "SAN AMANDA DE LA MONTANA",
+      "canonical_state": "NUEVO LEON",
+      "canonical_zip": "39198",
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00030"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290200+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-NUE-00002",
+      "pl_number": "ES-01-NUE-00002",
+      "canonical_name": "GASOLINERA ROSAS SUR",
+      "canonical_brand": "SHELL",
+      "canonical_address": "AVENIDA. PROLONGACION NORTE CASANOVA 2818",
+      "canonical_municipality": "SAN ANA MARIA DE LA MONTANA",
+      "canonical_state": "NUEVO LEON",
+      "canonical_zip": "40456",
+      "lat": 29.256547,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00002"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289376+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-NUE-00037",
+      "pl_number": "ES-01-NUE-00037",
+      "canonical_name": "GASOLINERA NORTE ORDONEZ",
+      "canonical_brand": "SHELL",
+      "canonical_address": "AVENIDA. PRIVADA COAHUILA DE ZARAGOZA 457",
+      "canonical_municipality": "SAN AUGUSTO LOS BAJOS",
+      "canonical_state": "NUEVO LEON",
+      "canonical_zip": "27555",
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00037"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290371+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-NUE-00016",
+      "pl_number": "ES-01-NUE-00016",
+      "canonical_name": "FIGUEROA GASOLINERA ORIENTE",
+      "canonical_brand": "SHELL",
+      "canonical_address": "AVENIDA. PROLONGACION CHAD 217",
+      "canonical_municipality": "SAN JERONIMO DE LA MONTANA",
+      "canonical_state": "NUEVO LEON",
+      "canonical_zip": "70035",
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00016"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289760+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-NUE-00044",
+      "pl_number": "ES-01-NUE-00044",
+      "canonical_name": "FELICIANO GASOLINERA ORIENTE",
+      "canonical_brand": "SHELL",
+      "canonical_address": "AVENIDA. PRIVADA TONGA 40977",
+      "canonical_municipality": "VIEJA TAILANDIA",
+      "canonical_state": "NUEVO LEON",
+      "canonical_zip": "64011",
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00044"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290574+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-PUE-00032",
+      "pl_number": "ES-01-PUE-00032",
+      "canonical_name": "BELTRAN GASOLINERA NORTE",
+      "canonical_brand": "HIDROSINA",
+      "canonical_address": "AVENIDA. DIAGONAL MALDIVAS 791",
+      "canonical_municipality": "NUEVA BELGICA",
+      "canonical_state": "PUEBLA",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00032"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290241+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-PUE-00025",
+      "pl_number": "ES-01-PUE-00025",
+      "canonical_name": "GASOLINERA OCHOA ORIENTE",
+      "canonical_brand": "HIDROSINA",
+      "canonical_address": "AVENIDA. DIAGONAL SAMANIEGO 73562",
+      "canonical_municipality": "NUEVA PAKISTAN",
+      "canonical_state": "PUEBLA",
+      "canonical_zip": "87950",
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00025"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290089+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-PUE-00046",
+      "pl_number": "ES-01-PUE-00046",
+      "canonical_name": "COVARRUBIAS GASOLINERA SUR",
+      "canonical_brand": "HIDROSINA",
+      "canonical_address": "AVENIDA. ANDADOR PUEBLA 23784",
+      "canonical_municipality": "SAN CRISTAL DE LA MONTANA",
+      "canonical_state": "PUEBLA",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00046"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290619+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-PUE-00004",
+      "pl_number": "ES-01-PUE-00004",
+      "canonical_name": "GASOLINERA HUERTA NORTE",
+      "canonical_brand": "HIDROSINA",
+      "canonical_address": "AVENIDA. CIRCUNVALACION REPUBLICA DEMOCRATICA POPULAR LAO 5709",
+      "canonical_municipality": "SAN MICAELA LOS ALTOS",
+      "canonical_state": "PUEBLA",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00004"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289444+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-PUE-00039",
+      "pl_number": "ES-01-PUE-00039",
+      "canonical_name": "BRITO GASOLINERA NORTE",
+      "canonical_brand": "HIDROSINA",
+      "canonical_address": "AVENIDA. PROLONGACION SINALOA 572",
+      "canonical_municipality": "SAN RUBEN LOS BAJOS",
+      "canonical_state": "PUEBLA",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00039"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.290425+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-PUE-00011",
+      "pl_number": "ES-01-PUE-00011",
+      "canonical_name": "GASOLINERA ORIENTE SANTILLAN",
+      "canonical_brand": "HIDROSINA",
+      "canonical_address": "AVENIDA. PASAJE SUR ROSALES 22551",
+      "canonical_municipality": "VIEJA ETIOPIA",
+      "canonical_state": "PUEBLA",
+      "canonical_zip": "12001",
+      "lat": NaN,
+      "lng": -94.69801,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00011"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289607+00:00",
+      "prices": null
+    },
+    {
+      "master_id": "master_cre_ES-01-PUE-00018",
+      "pl_number": "ES-01-PUE-00018",
+      "canonical_name": "ARIAS CENTRO GASOLINERA",
+      "canonical_brand": "HIDROSINA",
+      "canonical_address": "AVENIDA. AVENIDA PUENTE 056",
+      "canonical_municipality": "VIEJA IRAN",
+      "canonical_state": "PUEBLA",
+      "canonical_zip": NaN,
+      "lat": NaN,
+      "lng": NaN,
+      "status": "active",
+      "confidence_score": 1.0,
+      "primary_source": "cre",
+      "source_ids": [
+        {
+          "source": "cre",
+          "id": "cre_MX00018"
+        }
+      ],
+      "last_confirmed_at": "2026-03-31T02:03:53.289867+00:00",
+      "prices": null
+    }
+  ]
+}

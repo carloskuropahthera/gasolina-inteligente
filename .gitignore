@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Pipeline databases (large binaries — rebuilt by CI)
+pipeline/data/staging/*.db
+pipeline/data/curated/*.db
+
+# Keep raw parquet history (the proprietary advantage) and exports
+!pipeline/data/raw/
+!pipeline/data/curated/exports/
+
+# Pipeline staging artifacts (not needed in git)
+pipeline/data/staging/
+pipeline/data/failed/
+
+# Environment
+.env
+*.env
+credentials/
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
