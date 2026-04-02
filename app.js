@@ -45,7 +45,15 @@ window._gi_selectStation = (id) => {
 
 // ─── Startup Sequence ─────────────────────────────────────────────────────
 
+// Guard against double-boot (e.g. if DOMContentLoaded fires more than once in
+// some edge-case browser/extension environments, or if this module is evaluated
+// multiple times due to a stale service-worker cache serving two different module
+// versions at the same time).
+let _booted = false;
+
 async function boot() {
+  if (_booted) { log.warn('boot() called more than once — ignoring'); return; }
+  _booted = true;
   const startTime = Date.now();
   log.info('Gasolina Inteligente booting…');
 

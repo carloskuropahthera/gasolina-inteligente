@@ -2,7 +2,7 @@
  * Gasolina Inteligente Service Worker
  * Strategy: Cache-first for app shell, network-first for station data
  */
-const CACHE_VERSION = 'gi-v1';
+const CACHE_VERSION = 'gi-v2';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 
