@@ -24,7 +24,11 @@ let _scrapeHistory   = [];
 
 function nowMexicoHour() {
   return parseInt(
-    new Date().toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: MEXICO_TZ }),
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: MEXICO_TZ,
+      hour: 'numeric',
+      hour12: false,
+    }).format(new Date()),
     10
   );
 }
