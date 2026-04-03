@@ -58,6 +58,8 @@ function renderPriceList() {
 
   // Empty state — no stations match the current filters
   if (sorted.length === 0) {
+    // Suppress empty state while the initial data load is still in progress
+    if (state.isLoading) return;
     _container.innerHTML = `
       ${renderSummaryBar(summary, fuelType, data)}
       ${renderLastUpdated(state.lastFetch)}

@@ -10,8 +10,8 @@ import { fetchAll }                        from './modules/api/cre-client.js';
 import { loadStaticData }                 from './modules/api/static-loader.js?v=9';
 import { loadMatrix, loadSummary }        from './modules/precompute/matrix-loader.js';
 import { initScraper }                    from './modules/scraper/daily-scraper.js';
-import { detectAnomalies }               from './modules/analytics/anomaly-detector.js';
-import { addDistances, getUserLocation }  from './modules/data/geo.js';
+import { detectAnomalies }               from './modules/analytics/anomaly-detector.js?v=2';
+import { addDistances, getUserLocation }  from './modules/data/geo.js?v=2';
 import { todayISO, formatDuration }       from './modules/utils/helpers.js';
 
 // UI modules
@@ -93,13 +93,14 @@ async function boot() {
     showMockBanner(true);
   }
 
-  // 7. Load data
-  showLoading('Cargando estaciones y precios…');
-  await loadData();
-
-  // 8. Try to load distance matrix
+  // 7. Load distance matrix FIRST — anomaly detection inside loadData needs it for O(1) lookups.
+  //    Without it, detectAnomalies falls back to O(n²) haversine which freezes the page.
   showLoading('Cargando matriz de distancias…');
   await tryLoadMatrix();
+
+  // 8. Load data (anomaly detection will now use the pre-loaded matrix)
+  showLoading('Cargando estaciones y precios…');
+  await loadData();
 
   // 9. Get user location (non-blocking)
   getUserLocation().then(loc => {
@@ -200,16 +201,15 @@ async function loadData() {
       anomalies,
     });
 
-    // Render map
-    const { fuelType: ft } = getState().filters;
-    renderStations(getState().mergedData, ft ?? 'regular');
+    // filteredData subscription already triggers renderStations — just show anomalies
     if (anomalies.length > 0) showAnomalies(anomalies);
 
     log.info(`Data ready: ${tagged.length} stations, ${anomalies.length} anomalies`);
 
   } catch (err) {
     log.error('loadData failed', err);
-    setState({ error: err.message });
+    hideLoading();
+    setState({ error: err.message, isLoading: false });
     showToast(`Error loading data: ${err.message}`, 'error');
   }
 }

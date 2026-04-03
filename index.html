@@ -112,8 +112,26 @@
 <!-- ═══ TOAST CONTAINER ══════════════════════════════════════════ -->
 <div id="toast-container"></div>
 
+<!-- ═══ SW CACHE BUSTER (first load of each tab session: clear SW so fresh files load) ═ -->
+<script>
+(function () {
+  if (!('serviceWorker' in navigator)) return;
+  // Once per tab session: unregister any SW so next load is served fresh from network.
+  // The SW re-registers on every boot (app.js line ~32), so offline support is only
+  // delayed by one reload, not permanently lost.
+  if (sessionStorage.getItem('sw_cleared')) return;
+  sessionStorage.setItem('sw_cleared', '1');
+  navigator.serviceWorker.getRegistrations().then(function (regs) {
+    if (!regs.length) return;
+    Promise.all(regs.map(function (r) { return r.unregister(); })).then(function () {
+      location.reload(); // hard reload, no SW intercept → all JS files fetched fresh
+    });
+  });
+})();
+</script>
+
 <!-- ═══ APP ENTRY ════════════════════════════════════════════════ -->
-<script type="module" src="app.js?v=9"></script>
+<script type="module" src="app.js?v=11"></script>
 
 </body>
 </html>

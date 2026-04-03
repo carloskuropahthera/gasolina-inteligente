@@ -2,7 +2,7 @@
  * Gasolina Inteligente Service Worker
  * Strategy: Cache-first for app shell, network-first for station data
  */
-const CACHE_VERSION = 'gi-v2';
+const CACHE_VERSION = 'gi-v6';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 
@@ -46,9 +46,11 @@ self.addEventListener('install', (event) => {
       console.log('[SW] Caching app shell');
       // Cache files individually so one failure doesn't block all
       return Promise.allSettled(
-        APP_SHELL_FILES.map((url) => cache.add(url).catch(() => {
-          console.warn('[SW] Failed to cache:', url);
-        }))
+        APP_SHELL_FILES.map((url) =>
+          cache.add(new Request(url, { cache: 'reload' })).catch(() => {
+            console.warn('[SW] Failed to cache:', url);
+          })
+        )
       );
     }).then(() => self.skipWaiting())
   );
@@ -93,7 +95,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // App shell: cache-first
+  // JS modules: always bypass the browser HTTP cache so edited files are picked up
+  // immediately without waiting for heuristic freshness to expire.
+  // Falls back to SW cache for offline resilience.
+  if (url.pathname.endsWith('.js')) {
+    event.respondWith(
+      fetch(new Request(event.request, { cache: 'reload' }))
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(APP_SHELL_CACHE).then((cache) => cache.put(event.request, clone));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // App shell (HTML, CSS, etc.): cache-first for fast startup
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;

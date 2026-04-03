@@ -34,12 +34,16 @@ export function initMap(containerId) {
 
   L.tileLayer(TILE_URL, { attribution: TILE_ATTRIB, maxZoom: 19 }).addTo(_map); // eslint-disable-line no-undef
 
-  // MarkerClusterGroup
+  // MarkerClusterGroup — chunkedLoading keeps the main thread responsive with 14k+ markers
   _markers = L.markerClusterGroup({ // eslint-disable-line no-undef
     maxClusterRadius: 50,
     disableClusteringAtZoom: 13,
     spiderfyOnMaxZoom: true,
     showCoverageOnHover: false,
+    chunkedLoading: true,   // process markers asynchronously in timed chunks
+    chunkSize: 200,         // markers per chunk
+    chunkInterval: 100,     // ms between chunks (keeps UI at ~10fps during load)
+    chunkDelay: 50,         // ms before first chunk starts
   });
   _map.addLayer(_markers);
 
@@ -126,16 +130,30 @@ function buildPopup(station) {
  * @param {Merged[]} mergedData
  * @param {string} [fuelType='regular']
  */
+/**
+ * Render all stations as map markers with clustering.
+ *
+ * MarkerClusterGroup is initialized with chunkedLoading:true so addLayers()
+ * returns immediately and processes markers in the background — the main
+ * thread stays responsive and the boot sequence can finish while markers
+ * progressively appear on the map.
+ *
+ * @param {Merged[]} mergedData
+ * @param {string} [fuelType='regular']
+ */
 export function renderStations(mergedData, fuelType = 'regular') {
   _markers.clearLayers();
   _markerMap.clear();
 
   // Determine cheapest 10% for star badges
-  const prices  = mergedData.filter(s => s.hasData && s.prices?.[fuelType] != null)
-                            .map(s => s.prices[fuelType]);
+  const prices = mergedData
+    .filter(s => s.hasData && s.prices?.[fuelType] != null)
+    .map(s => s.prices[fuelType]);
   prices.sort((a, b) => a - b);
-  const p10     = prices[Math.floor(prices.length * 0.1)] ?? 0;
+  const p10 = prices[Math.floor(prices.length * 0.1)] ?? 0;
 
+  // Build all marker objects
+  const allLayers = [];
   for (const station of mergedData) {
     if (!station.lat || !station.lng) continue;
 
@@ -146,16 +164,18 @@ export function renderStations(mergedData, fuelType = 'regular') {
     const icon       = createMarkerIcon(color, isCheapest, isAnomaly);
 
     const marker = L.marker([station.lat, station.lng], { icon, title: station.name }); // eslint-disable-line no-undef
-    marker.bindPopup(buildPopup(station), { maxWidth: 280, className: 'gi-popup' });
-    marker.on('click', () => {
-      setState({ selectedStation: station });
-    });
+    // Lazy popup: HTML built only when opened — not for all 14k markers upfront
+    marker.bindPopup(() => buildPopup(station), { maxWidth: 280, className: 'gi-popup' });
+    marker.on('click', () => setState({ selectedStation: station }));
 
-    _markers.addLayer(marker);
+    allLayers.push(marker);
     _markerMap.set(station.id, marker);
   }
 
-  log.info(`Rendered ${mergedData.length} station markers`);
+  // addLayers with chunkedLoading:true returns immediately;
+  // MarkerClusterGroup processes chunks via internal setTimeout intervals
+  _markers.addLayers(allLayers); // eslint-disable-line no-undef
+  log.info(`Queued ${allLayers.length} station markers for chunked render`);
 }
 
 /**

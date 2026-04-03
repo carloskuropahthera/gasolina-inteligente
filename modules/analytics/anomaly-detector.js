@@ -2,7 +2,7 @@
 // PURPOSE: Spatial price anomaly detection using Z-score and IQR vs local neighborhood
 // DEPENDS ON: geo, logger
 
-import { getNearbyById }  from '../data/geo.js';
+import { getNearbyById }  from '../data/geo.js?v=2';
 import { createLogger }   from '../utils/logger.js';
 import { percentile }     from '../utils/helpers.js';
 
@@ -68,6 +68,9 @@ export function detectAnomalies(mergedData, fuelType, options = {}) {
     return [];
   }
 
+  // Build O(1) ID → station map so inner neighbor lookups don't do O(n) linear scans
+  const stationById = new Map(mergedData.map(s => [s.id, s]));
+
   const anomalies = [];
 
   for (const station of withPrices) {
@@ -76,9 +79,9 @@ export function detectAnomalies(mergedData, fuelType, options = {}) {
     // Get neighbors from matrix (or real-time haversine fallback)
     const neighborRefs = getNearbyById(station.id, mergedData, radiusKm);
 
-    // Resolve neighbor IDs to full station objects with prices
+    // Resolve neighbor IDs → full objects using O(1) map lookup
     const neighborData = neighborRefs
-      .map(ref => mergedData.find(s => s.id === ref.stationId))
+      .map(ref => stationById.get(ref.stationId))
       .filter(s => s?.hasData && s.prices?.[fuelType] != null);
 
     if (neighborData.length < 2) continue; // not enough local context

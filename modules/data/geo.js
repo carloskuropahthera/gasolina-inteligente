@@ -100,7 +100,9 @@ export function getNearbyStations(stations, lat, lng, radiusKm) {
  * @returns {{ stationId: string, distanceKm: number, manhattanKm: number }[]}
  */
 export function getNearbyById(stationId, allStations, radiusKm = 10) {
-  // Try matrix first (use 5km, 20km, 50km depending on radius)
+  // Try the ideal matrix first (smallest that covers the full radius),
+  // then fall back to any smaller available matrix (returns a subset of
+  // true neighbors — still correct for anomaly detection, just conservative).
   const matrixRadius = radiusKm <= 5 ? 5 : radiusKm <= 20 ? 20 : 50;
 
   if (isLoaded(matrixRadius)) {
@@ -108,12 +110,28 @@ export function getNearbyById(stationId, allStations, radiusKm = 10) {
     return neighbors.filter(n => n.distanceKm <= radiusKm);
   }
 
-  // Fallback: real-time haversine
+  // Smaller matrix available? Use it — it covers at most `r` km of the
+  // requested radius, but that's still enough local context for anomaly detection.
+  for (const r of [5, 20, 50]) {
+    if (r < matrixRadius && isLoaded(r)) {
+      return matrixGetNearby(stationId, r); // already filtered to ≤r km
+    }
+  }
+
+  // Fallback: real-time haversine with bounding-box pre-filter.
+  // Eliminate stations whose lat/lng delta already exceeds the radius before
+  // paying the full trig cost of haversine — reduces the haversine calls from
+  // O(n) to O(local_density), typically 10–100 per station in Mexico.
   const target = allStations.find(s => s.id === stationId);
   if (!target) return [];
 
+  const latDelta = radiusKm / 111;                                       // deg latitude per km
+  const lngDelta = radiusKm / (111 * Math.cos(target.lat * Math.PI / 180)); // deg longitude per km
+
   return allStations
-    .filter(s => s.id !== stationId)
+    .filter(s => s.id !== stationId
+              && Math.abs(s.lat - target.lat) <= latDelta
+              && Math.abs(s.lng - target.lng) <= lngDelta)
     .map(s => ({
       stationId:   s.id,
       distanceKm:  Math.round(haversine(target.lat, target.lng, s.lat, s.lng) * 100) / 100,
