@@ -2,15 +2,14 @@ name: Daily Price Refresh
 
 on:
   schedule:
-    # 7:30 AM Mexico City time (UTC-6 standard / UTC-5 summer — using UTC-6 to be safe)
     - cron: '30 13 * * *'
-  workflow_dispatch:  # Also allow manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # needed to commit back
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -24,44 +23,50 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
-          cache-dependency-path: gasolina-inteligente/pipeline/requirements.txt
+          cache-dependency-path: pipeline/requirements.txt
 
       - name: Install Python dependencies
         run: pip install -r requirements.txt
-        working-directory: gasolina-inteligente/pipeline
+        working-directory: pipeline
+        env:
+          PYTHONUTF8: "1"
 
       - name: Restore pipeline databases (price history continuity)
         uses: actions/cache@v4
         with:
           path: |
-            gasolina-inteligente/pipeline/data/staging/gasolina_staging.db
-            gasolina-inteligente/pipeline/data/curated/gasolina_master.db
-            gasolina-inteligente/pipeline/data/raw/
+            pipeline/data/staging/gasolina_staging.db
+            pipeline/data/curated/gasolina_master.db
+            pipeline/data/raw/
           key: pipeline-db-${{ github.run_number }}
           restore-keys: |
             pipeline-db-
 
-      - name: Initialize databases (idempotent — safe on first run)
-        run: python -c "import sys; sys.path.insert(0,'gasolina-inteligente/pipeline'); from storage.db import init_db; init_db()"
+      - name: Initialize databases (idempotent)
+        run: python -c "import sys; sys.path.insert(0,'pipeline'); from storage.db import init_db; init_db()"
+        env:
+          PYTHONUTF8: "1"
 
       - name: Run daily CRE price refresh
         run: python scripts/refresh.py --source cre_prices --no-qa
-        working-directory: gasolina-inteligente/pipeline
+        working-directory: pipeline
         env:
           PYTHONPATH: .
+          PYTHONUTF8: "1"
 
       - name: Copy export to web app data directory
         run: |
-          mkdir -p gasolina-inteligente/data
-          cp gasolina-inteligente/pipeline/data/curated/exports/stations_latest.json \
-             gasolina-inteligente/data/stations_latest.json
-          echo "Exported: $(python3 -c "import json; d=json.load(open('gasolina-inteligente/data/stations_latest.json')); print(d['total'], 'stations,', d['exported_at'])")"
+          mkdir -p data
+          cp pipeline/data/curated/exports/stations_latest.json data/stations_latest.json
+          echo "Exported: $(python3 -c "import json; d=json.load(open('data/stations_latest.json')); print(d['total'], 'stations,', d['exported_at'])")"
+        env:
+          PYTHONUTF8: "1"
 
       - name: Commit and push updated data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add gasolina-inteligente/data/stations_latest.json
+          git add data/stations_latest.json
           git diff --staged --quiet && echo "No changes to commit" || \
             git commit -m "data: daily price refresh $(date -u +%Y-%m-%d)" && \
             git push
