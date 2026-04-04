@@ -9,6 +9,8 @@ import { calculateFillSavings }     from '../analytics/savings-calculator.js';
 import { getState, subscribe, setState } from '../utils/state.js';
 import { formatPriceMXN, formatDistance, esc } from '../utils/helpers.js';
 import { createLogger }             from '../utils/logger.js';
+import { getFreshness, freshnessLabel } from '../utils/freshness.js';
+import { openProfecoReport, renderReportButton } from './profeco-report.js';
 
 const log = createLogger('station-card');
 
@@ -87,6 +89,8 @@ function buildCardHTML(station, ft, history, nearby, stats, anomaly, cheapestNea
   const p     = station.prices;
   const color = getBrandColor(station.brand);
   const mapsUrl = `https://www.google.com/maps?q=${station.lat},${station.lng}`;
+  const fresh = freshnessLabel(getFreshness(station.updatedAt ?? null));
+  const trend = _priceTrend(station.price_history, ft);
 
   const priceRow = (label, val, prevVal) => {
     if (val == null) return `<tr><td>${label}</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>`;
@@ -158,7 +162,7 @@ function buildCardHTML(station, ft, history, nearby, stats, anomaly, cheapestNea
     <div class="card-inner">
       <div class="card-header" style="border-left:4px solid ${color}">
         <div>
-          <h2 class="card-title">${esc(station.name)}</h2>
+          <h2 class="card-title">${esc(station.name)}<span class="fresh-badge" style="color:${fresh.color}" title="${fresh.label}">${fresh.icon}</span></h2>
           <span class="brand-badge" style="background:${color}">${esc(station.brand)}</span>
         </div>
         <button class="card-close" id="card-close-btn">✕</button>
@@ -179,7 +183,7 @@ function buildCardHTML(station, ft, history, nearby, stats, anomaly, cheapestNea
         ${anomalyBanner}
         ${savingsBanner}
 
-        <h3 class="section-title">Price Comparison</h3>
+        <h3 class="section-title">Price Comparison ${trend ? `<span class="trend-badge">${trend}</span>` : ''}</h3>
         <table class="detail-table">
           <thead><tr><th>Fuel</th><th>Today</th><th>Yesterday</th><th>Change</th><th>vs National</th></tr></thead>
           <tbody>
@@ -205,6 +209,8 @@ function buildCardHTML(station, ft, history, nearby, stats, anomaly, cheapestNea
 
         <h3 class="section-title">Nearby Stations (5km)</h3>
         ${nearbyList}
+
+        ${renderReportButton(station.id)}
       </div>
     </div>`;
 }
@@ -279,6 +285,18 @@ function buildNeighborhoodStats(station, ft, allData, radiusKm) {
     ${rankHTML}`;
 }
 
+// ─── Price Trend ──────────────────────────────────────────────────────────
+
+function _priceTrend(history, fuelType) {
+  const vals = (history ?? [])
+    .map(h => h.prices?.[fuelType])
+    .filter(v => v != null)
+    .slice(-7); // last 7 data points
+  if (vals.length < 2) return null;
+  const delta = vals[vals.length - 1] - vals[0];
+  return delta > 0.05 ? '📈 Subiendo' : delta < -0.05 ? '📉 Bajando' : '➡️ Estable';
+}
+
 // ─── Chart ────────────────────────────────────────────────────────────────
 
 function renderChart(station, ft, history) {
@@ -342,6 +360,16 @@ function renderChart(station, ft, history) {
 
 function attachCardListeners(station) {
   document.getElementById('card-close-btn')?.addEventListener('click', closeCard);
+
+  _drawer.querySelectorAll('.profeco-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const type = btn.dataset.type;
+      await openProfecoReport(station, type);
+      // showToast is imported dynamically to avoid circular dep
+      const appModule = await import('../../app.js');
+      appModule.showToast('Datos copiados. Abriendo Profeco…', 'info');
+    });
+  });
 
   _drawer.querySelectorAll('.nearby-row').forEach(row => {
     row.addEventListener('click', () => {

@@ -6,6 +6,7 @@ import { getBrandColor }    from '../data/stations.js';
 import { setState, getState } from '../utils/state.js';
 import { createLogger }     from '../utils/logger.js';
 import { formatPriceMXN, formatDistance, esc } from '../utils/helpers.js';
+import { getFreshness, freshnessLabel } from '../utils/freshness.js';
 
 const log = createLogger('map');
 
@@ -49,6 +50,21 @@ export function initMap(containerId) {
   });
   _map.addLayer(_markers);
 
+  // Price labels: show price pills on markers when zoomed to street level
+  _map.on('zoomend', () => {
+    const zoom = _map.getZoom();
+    _markers.eachLayer(marker => {
+      if (marker._giStation) {
+        const station = marker._giStation;
+        const { filters } = getState();
+        const fuelType = filters.fuelType ?? 'regular';
+        const price = station.prices?.[fuelType];
+        const color = getBrandColor(station.brand);
+        marker.setIcon(createMarkerIcon(color, false, station._isAnomaly, zoom >= 13 ? price : null));
+      }
+    });
+  });
+
   // Drop-a-pin: clicking the map sets userLocation with source='pin'
   _map.on('click', (e) => {
     const { lat, lng } = e.latlng;
@@ -65,9 +81,22 @@ export function initMap(containerId) {
 
 // ─── Marker Icons ─────────────────────────────────────────────────────────
 
-function createMarkerIcon(color, isCheapest = false, isAnomaly = false) {
-  const size   = isCheapest ? 14 : 10;
+function createMarkerIcon(color, isCheapest = false, isAnomaly = false, priceLabel = null) {
   const border = isAnomaly ? '#FFD700' : '#ffffff';
+
+  if (priceLabel != null) {
+    // Price-label mode: pill showing "$22.34"
+    const html = `
+      <div style="
+        background:${color};border:2px solid ${border};border-radius:4px;
+        padding:2px 5px;font-size:9px;color:#fff;font-weight:700;
+        white-space:nowrap;box-shadow:0 1px 4px #0008;
+      ">$${Number(priceLabel).toFixed(2)}</div>`;
+    const w = 48;
+    return L.divIcon({ html, className: '', iconSize: [w, 16], iconAnchor: [w/2, 8] }); // eslint-disable-line no-undef
+  }
+
+  const size   = isCheapest ? 14 : 10;
   const badge  = isCheapest ? '★' : '';
   const html   = `
     <div style="
@@ -112,6 +141,10 @@ function buildPopup(station) {
     ? `<div class="popup-anomaly">⚠️ Anomaly detected — check details</div>`
     : '';
 
+  const freshStatus = getFreshness(station.updatedAt ?? station.lastSeen ?? null);
+  const fresh = freshnessLabel(freshStatus);
+  const freshBadge = `<div class="popup-fresh" style="color:${fresh.color}">${fresh.icon} ${fresh.label}</div>`;
+
   return `
     <div class="map-popup">
       <div class="popup-header">
@@ -121,6 +154,7 @@ function buildPopup(station) {
       <div class="popup-addr">${esc(station.address)}, ${esc(station.city)}</div>
       ${distInfo}
       ${anomalyBanner}
+      ${freshBadge}
       <table class="popup-prices">
         <thead><tr><th>Fuel</th><th>Price</th><th>vs Avg</th></tr></thead>
         <tbody>
@@ -179,6 +213,7 @@ export function renderStations(mergedData, fuelType = 'regular') {
     // Lazy popup: HTML built only when opened — not for all 14k markers upfront
     marker.bindPopup(() => buildPopup(station), { maxWidth: 280, className: 'gi-popup' });
     marker.on('click', () => setState({ selectedStation: station }));
+    marker._giStation = station;
 
     allLayers.push(marker);
     _markerMap.set(station.id, marker);

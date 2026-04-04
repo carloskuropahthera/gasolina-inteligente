@@ -19,6 +19,7 @@ import { initMap, renderStations, highlightStation, showAnomalies, updateUserPin
 import { initLocationBar } from './modules/ui/location-bar.js';
 import { initNearbyPanel } from './modules/ui/nearby-panel.js';
 import { initFuelCalculator } from './modules/ui/fuel-calculator.js';
+import { initRouteOptimizer } from './modules/ui/route-optimizer.js';
 import { initPriceList }    from './modules/ui/price-list.js';
 import { initFilters, parseURLHash, applyFilters } from './modules/ui/filters.js';
 import { initSearch }       from './modules/ui/search.js';
@@ -84,6 +85,7 @@ async function boot() {
   initLocationBar('location-bar');
   initNearbyPanel('nearby-panel');
   initFuelCalculator('fuel-calculator');
+  initRouteOptimizer('route-optimizer');
 
   // 4. Wire header buttons and mobile helpers
   wireHeaderButtons();

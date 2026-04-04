@@ -1144,3 +1144,37 @@ input[type="range"]:disabled { opacity: 0.4; }
 .fc-result--cost strong { color: var(--accent-green); font-size: 14px; }
 .fc-result--ok { color: var(--accent-green); }
 .fc-hint { font-size: 12px; color: var(--text-muted); text-align: center; }
+
+/* ── Freshness badges ───────────────────────────────────────────────── */
+.popup-fresh { font-size: 11px; margin: 4px 0; padding: 2px 6px; border-radius: 3px; background: rgba(255,255,255,0.05); }
+.fresh-badge { font-size: 14px; margin-left: 6px; cursor: help; vertical-align: middle; }
+
+/* ── Profeco report section ─────────────────────────────────────────── */
+.profeco-section { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+.profeco-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+.profeco-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.profeco-btn {
+  background: var(--bg-hover); border: 1px solid var(--border);
+  color: var(--text-secondary); border-radius: var(--radius-sm);
+  padding: 5px 10px; font-size: 12px; cursor: pointer;
+}
+.profeco-btn:hover { border-color: var(--accent-orange); color: var(--accent-orange); }
+.profeco-note { font-size: 10px; color: var(--text-muted); margin-top: 6px; }
+
+/* ── Route optimizer ─────────────────────────────────────────────────── */
+.route-panel { margin-top: 12px; }
+.route-panel__header { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--text-secondary); cursor: pointer; padding: 4px 0; user-select: none; }
+.route-panel__body { overflow: hidden; max-height: 600px; transition: max-height 0.3s ease; }
+.route-panel__body--collapsed { max-height: 0; }
+.route-input { width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px; padding: 6px 8px; outline: none; margin-top: 8px; box-sizing: border-box; }
+.route-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+.route-mini-input { width: 50px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px; padding: 4px 6px; outline: none; }
+.route-hint { font-size: 12px; color: var(--text-muted); text-align: center; padding: 8px; }
+.route-hint--error { color: var(--accent-red); }
+.route-summary { font-size: 12px; color: var(--text-secondary); padding: 8px 0; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.route-station { padding: 6px 0; border-bottom: 1px solid var(--border); }
+.route-station__name { font-size: 13px; color: var(--text-primary); }
+.route-station__detail { font-size: 11px; color: var(--text-secondary); }
+
+/* ── Price trend badge ───────────────────────────────────────────────── */
+.trend-badge { font-size: 12px; margin-left: 8px; background: var(--bg-hover); border-radius: var(--radius-sm); padding: 2px 6px; font-weight: normal; }
