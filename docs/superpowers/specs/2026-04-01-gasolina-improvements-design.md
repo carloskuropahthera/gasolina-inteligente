@@ -135,7 +135,28 @@ Only change to existing files:
 - `app.js`: import and init `location-bar.js`, remove the "enable location" hint from filters (location-bar replaces it)
 - `index.html`: add `<div id="location-bar">` above filters panel
 
-### 2.7 Error Handling
+### 2.7 Drop-a-Pin Feature
+
+**What:** User clicks anywhere on the map → a draggable pin drops at that point → radius circle appears → side panel shows nearest + cheapest stations within that radius.
+
+**Map behavior (changes to `modules/ui/map.js`):**
+- `map.on('click', e)` → calls `setState({ userLocation: { lat: e.latlng.lat, lng: e.latlng.lng }, userLocationSource: 'pin' })`
+- Renders a distinct draggable `L.marker` (different icon from station markers) at the pin location
+- Drag end → same `setState` call with new position
+- Renders `L.circle(userLocation, { radius: maxDistanceKm * 1000 })` — updates reactively when distance slider changes
+- Pin is cleared if user switches back to GPS or address location
+
+**Nearby results panel (new: `modules/ui/nearby-panel.js`):**
+- Appears as a slide-up card at the bottom of the map when a pin is active
+- Shows two columns: **Nearest 5** (sorted by distance) and **Cheapest 5** (sorted by price for selected fuel type) within the radius
+- Each row: station name, distance, price — tappable to open station card
+- "Clear pin" button dismisses the panel and removes the pin + circle
+
+**Integration:** `userLocation` in state is already used by `addDistances()`, filters, and the price list sort — pin sets the same field, so all existing distance-aware features work automatically. No changes to filters, anomaly detector, or price list logic.
+
+**Radius source:** Reads `state.filters.maxDistanceKm` — the existing distance slider. If no limit set (slider at max), defaults to 10km for the circle and panel.
+
+### 2.8 Error Handling
 
 | Scenario | Behavior |
 |---|---|
@@ -151,6 +172,7 @@ Only change to existing files:
 ### New files
 - `modules/api/geocoder.js`
 - `modules/ui/location-bar.js`
+- `modules/ui/nearby-panel.js`
 - `docs/superpowers/specs/2026-04-01-gasolina-improvements-design.md` (this file)
 
 ### Modified files
@@ -158,6 +180,7 @@ Only change to existing files:
 - `app.js` — init location-bar, wire geocoder
 - `index.html` — add location-bar container
 - `modules/ui/filters.js` — remove "enable location" hint (location-bar owns this)
+- `modules/ui/map.js` — add click handler, draggable pin marker, radius circle
 - UI modules — design system tokens applied
 - CSS — design system implementation
 
@@ -172,5 +195,6 @@ Only change to existing files:
 1. `https://gasolina-inteligente.vercel.app` serves the app publicly
 2. GitHub Actions runs daily, commits updated JSON, Vercel redeploys automatically
 3. User can type "Polanco CDMX" or "64000" and see cheapest nearby stations ranked by distance
+4. User can click anywhere on the map to drop a draggable pin — radius circle appears, nearby panel shows nearest 5 + cheapest 5
 4. GPS flow still works as before — location-bar degrades gracefully
 5. UI design system applied consistently across map popup, price list, station card, filters
