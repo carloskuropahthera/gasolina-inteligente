@@ -90,18 +90,35 @@ Create a design system with:
 
 ### 2.4 New Module: `modules/api/geocoder.js`
 
-Wraps Nominatim (OpenStreetMap public API). No API key required.
+Two-stage pipeline: Claude NLP → Nominatim geocode.
+
+**Stage 1 — Claude NLP normalization (`/api/normalize-location`):**
+A lightweight Vercel serverless function (Edge Runtime) calls Claude API with the user's raw input and returns 1–3 clean, geocodable address candidates ranked by likelihood.
+
+Examples:
+- `"cerca del oxxo en polanco"` → `["Polanco, Miguel Hidalgo, CDMX"]`
+- `"salida a monterrey por la 57"` → `["Carretera México-Querétaro (MEX-57), Estado de México", "Querétaro, QRO"]`
+- `"64000"` → `["Monterrey, Nuevo León, CP 64000"]`
+
+Claude prompt is minimal — system: "You are a Mexican address normalizer. Return JSON array of 1-3 clean geocodable address strings for this input, most likely first. Input is in Spanish. Output only JSON." Cost: ~50 tokens per query.
+
+**Stage 2 — Nominatim geocode:**
+Each candidate → `countrycodes=mx&limit=1` Nominatim lookup → first successful result wins.
 
 ```
 geocode(query: string) → Promise<{ lat, lng, displayName } | null>
+suggest(query: string) → Promise<Array<{ label, lat, lng }>>  // for typeahead
 ```
 
-- Scoped to Mexico: `countrycodes=mx&limit=1`
+- `geocode()`: runs NLP → takes top candidate → geocodes → returns result
+- `suggest()`: runs NLP → geocodes all candidates → returns list for dropdown
 - Debounced 400ms on the input side (caller's responsibility)
-- 5s timeout, returns `null` on failure
-- No caching at module level (Nominatim has its own)
+- 5s total timeout, returns `null` on failure
+- Session-level cache: same query string → same result (no redundant API calls)
 
-**Privacy:** Query string sent to Nominatim public servers. No data stored. Tooltip informs user.
+**Vercel serverless function:** `api/normalize-location.js` — proxies Claude API call server-side so the API key is never exposed in the browser. Uses `@anthropic-ai/sdk`, deployed automatically with the Vercel project.
+
+**Privacy:** User's raw text sent to Claude API (Anthropic). Normalized string sent to Nominatim. No data stored. Tooltip informs user.
 
 ### 2.5 New Module: `modules/ui/location-bar.js`
 
@@ -114,15 +131,17 @@ Renders above the filters panel. Two modes:
 
 **Mode B — GPS denied / no location:**
 ```
-[🔍 Enter address, colonia, or zip...]  [📍 Use GPS]
+[🔍 ¿Dónde estás? Colonia, dirección, CP...]  [📍 GPS]
 ```
 
 Behavior:
-- Address input: debounced 400ms → `geocoder.geocode()` → if result: `setState({ userLocation: {lat, lng} })`
+- Address input: debounced 400ms → `geocoder.suggest()` → dropdown of up to 3 candidates appears
+- User selects candidate (or presses Enter for top result) → `geocoder.geocode()` → `setState({ userLocation: {lat, lng} })`
 - Shows `"📍 [display name]"` confirmation below input on success
-- Shows `"No results found"` inline on failure
+- Shows `"No results found"` inline on failure (rare — Claude normalizes most inputs)
 - Persists last address string and resolved `{lat, lng}` to `localStorage` key `gi_userLocation`
 - On boot: if `gi_userLocation` in localStorage and no GPS, restores it silently
+- Placeholder text examples cycle: "Polanco CDMX", "CP 64000", "cerca del OXXO en Tlalnepantla"
 
 ### 2.6 Integration Points
 
@@ -173,6 +192,7 @@ Only change to existing files:
 - `modules/api/geocoder.js`
 - `modules/ui/location-bar.js`
 - `modules/ui/nearby-panel.js`
+- `api/normalize-location.js` (Vercel serverless function — Claude NLP proxy)
 - `docs/superpowers/specs/2026-04-01-gasolina-improvements-design.md` (this file)
 
 ### Modified files
@@ -187,6 +207,7 @@ Only change to existing files:
 ### External services
 - **Vercel** — static hosting, auto-deploy on push
 - **Nominatim** — geocoding, no key, rate limit: 1 req/s (debounce handles this)
+- **Claude API (Anthropic)** — NLP address normalization, called server-side via Vercel function. Requires `ANTHROPIC_API_KEY` in Vercel environment variables. Model: `claude-haiku-4-5-20251001` (fast + cheap for this use case).
 
 ---
 
@@ -194,7 +215,7 @@ Only change to existing files:
 
 1. `https://gasolina-inteligente.vercel.app` serves the app publicly
 2. GitHub Actions runs daily, commits updated JSON, Vercel redeploys automatically
-3. User can type "Polanco CDMX" or "64000" and see cheapest nearby stations ranked by distance
+3. User types fuzzy Spanish input ("cerca del oxxo en polanco", "CP 64000") → Claude normalizes → Nominatim geocodes → nearest stations ranked by distance appear instantly
 4. User can click anywhere on the map to drop a draggable pin — radius circle appears, nearby panel shows nearest 5 + cheapest 5
 4. GPS flow still works as before — location-bar degrades gracefully
 5. UI design system applied consistently across map popup, price list, station card, filters
