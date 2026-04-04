@@ -15,7 +15,10 @@ import { addDistances, getUserLocation }  from './modules/data/geo.js?v=2';
 import { todayISO, formatDuration }       from './modules/utils/helpers.js';
 
 // UI modules
-import { initMap, renderStations, highlightStation, showAnomalies } from './modules/ui/map.js';
+import { initMap, renderStations, highlightStation, showAnomalies, updateUserPin } from './modules/ui/map.js';
+import { initLocationBar } from './modules/ui/location-bar.js';
+import { initNearbyPanel } from './modules/ui/nearby-panel.js';
+import { initFuelCalculator } from './modules/ui/fuel-calculator.js';
 import { initPriceList }    from './modules/ui/price-list.js';
 import { initFilters, parseURLHash, applyFilters } from './modules/ui/filters.js';
 import { initSearch }       from './modules/ui/search.js';
@@ -78,6 +81,9 @@ async function boot() {
   initDevPanel('dev-panel');
   initFilters('sidebar');
   initSearch('search-input', 'search-dropdown');
+  initLocationBar('location-bar');
+  initNearbyPanel('nearby-panel');
+  initFuelCalculator('fuel-calculator');
 
   // 4. Wire header buttons and mobile helpers
   wireHeaderButtons();
@@ -105,7 +111,7 @@ async function boot() {
   // 9. Get user location (non-blocking)
   getUserLocation().then(loc => {
     if (loc) {
-      setState({ userLocation: loc });
+      setState({ userLocation: loc, userLocationSource: 'gps', userLocationLabel: 'Tu ubicación GPS' });
       log.info('User location obtained', loc);
       remergeWithDistances(loc);
     }
@@ -282,6 +288,12 @@ function wireStateSubscriptions() {
     renderStations(filtered, filters.fuelType ?? 'regular');
   });
 
+  // Update user pin/circle on the map whenever location changes
+  subscribe('userLocation', () => {
+    const { userLocation, userLocationSource, filters } = getState();
+    updateUserPin(userLocation, userLocationSource, filters.maxDistanceKm);
+  });
+
   subscribe('selectedStation', (station) => {
     if (station) highlightStation(station.id);
   });
@@ -328,7 +340,7 @@ function wireHeaderButtons() {
     const loc = await getUserLocation();
     hideLoading();
     if (loc) {
-      setState({ userLocation: loc });
+      setState({ userLocation: loc, userLocationSource: 'gps', userLocationLabel: 'Tu ubicación GPS' });
       remergeWithDistances(loc);
       showToast('Ubicación obtenida', 'success');
     } else {

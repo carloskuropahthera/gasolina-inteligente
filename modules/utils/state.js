@@ -9,6 +9,8 @@ let _state = {
   filteredData: [],
   selectedStation: null,
   userLocation: null,
+  userLocationSource: null,   // 'gps' | 'address' | 'pin'
+  userLocationLabel: null,    // human-readable string shown in location-bar
   distanceMatrixLoaded: false,
   distanceMatrixStats: null,
   filters: {
@@ -115,6 +117,8 @@ export function resetState() {
     filteredData: [],
     selectedStation: null,
     userLocation: null,
+    userLocationSource: null,
+    userLocationLabel: null,
     distanceMatrixLoaded: false,
     distanceMatrixStats: null,
     filters: {

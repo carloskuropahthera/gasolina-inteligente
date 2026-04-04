@@ -13,6 +13,8 @@ let _map        = null;
 let _markers    = null; // MarkerClusterGroup
 let _markerMap  = new Map(); // stationId → L.Marker
 let _heatLayer  = null;
+let _userPin    = null; // L.Marker for drop-a-pin
+let _radiusCircle = null; // L.Circle for distance radius
 
 const TILE_URL     = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTRIB  = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
@@ -46,6 +48,16 @@ export function initMap(containerId) {
     chunkDelay: 50,         // ms before first chunk starts
   });
   _map.addLayer(_markers);
+
+  // Drop-a-pin: clicking the map sets userLocation with source='pin'
+  _map.on('click', (e) => {
+    const { lat, lng } = e.latlng;
+    setState({
+      userLocation: { lat, lng },
+      userLocationSource: 'pin',
+      userLocationLabel: `Pin (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+    });
+  });
 
   log.info('Map initialized');
   return _map;
@@ -267,3 +279,60 @@ export function toggleHeatmap(mergedData, fuelType) {
 
 /** Get the underlying Leaflet map instance */
 export function getMap() { return _map; }
+
+/**
+ * Update or remove the draggable user-location pin and radius circle.
+ * Called from app.js whenever state.userLocation or state.userLocationSource changes.
+ * @param {{ lat: number, lng: number } | null} loc
+ * @param {'gps'|'address'|'pin'|null} source
+ * @param {number|null} radiusKm
+ */
+export function updateUserPin(loc, source, radiusKm) {
+  if (!_map) return;
+
+  // Remove existing pin + circle
+  if (_userPin) { _map.removeLayer(_userPin); _userPin = null; }
+  if (_radiusCircle) { _map.removeLayer(_radiusCircle); _radiusCircle = null; }
+
+  if (!loc) return;
+
+  // Choose icon based on source
+  const pinHtml = source === 'pin'
+    ? `<div style="font-size:28px;line-height:1;filter:drop-shadow(0 2px 4px #0008)">📌</div>`
+    : `<div style="font-size:24px;line-height:1;filter:drop-shadow(0 2px 4px #0008)">📍</div>`;
+
+  const pinIcon = L.divIcon({ // eslint-disable-line no-undef
+    html: pinHtml,
+    className: '',
+    iconSize: [32, 32],
+    iconAnchor: [16, 28],
+  });
+
+  _userPin = L.marker([loc.lat, loc.lng], { // eslint-disable-line no-undef
+    icon: pinIcon,
+    draggable: source === 'pin',
+    zIndexOffset: 1000,
+  }).addTo(_map);
+
+  if (source === 'pin') {
+    _userPin.on('dragend', (e) => {
+      const { lat, lng } = e.target.getLatLng();
+      setState({
+        userLocation: { lat, lng },
+        userLocationSource: 'pin',
+        userLocationLabel: `Pin (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+      });
+    });
+  }
+
+  // Draw radius circle if a distance limit is set
+  const radius = radiusKm ?? 10;
+  _radiusCircle = L.circle([loc.lat, loc.lng], { // eslint-disable-line no-undef
+    radius: radius * 1000,
+    color: '#4fc3f7',
+    fillColor: '#4fc3f7',
+    fillOpacity: 0.06,
+    weight: 1.5,
+    dashArray: '6 4',
+  }).addTo(_map);
+}

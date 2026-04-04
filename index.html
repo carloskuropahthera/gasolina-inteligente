@@ -70,11 +70,18 @@
   <div id="main-area">
 
     <!-- Filters Sidebar -->
-    <aside id="sidebar"></aside>
+    <aside id="sidebar">
+      <!-- Location Bar — rendered above filters by initLocationBar -->
+      <div id="location-bar"></div>
+      <!-- Fuel Calculator -->
+      <div id="fuel-calculator"></div>
+    </aside>
 
     <!-- Map -->
     <div id="map">
       <div id="map-container"></div>
+      <!-- Nearby Panel — slide-up over map bottom -->
+      <div id="nearby-panel"></div>
       <!-- Mobile scroll hint: floats at bottom of map, hides when price list is visible -->
       <button id="btn-scroll-to-list" class="scroll-to-list-btn" aria-label="Ver lista de precios">
         ▼ Price List
@@ -131,7 +138,7 @@
 </script>
 
 <!-- ═══ APP ENTRY ════════════════════════════════════════════════ -->
-<script type="module" src="app.js?v=11"></script>
+<script type="module" src="app.js?v=12"></script>
 
 </body>
 </html>

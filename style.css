@@ -896,3 +896,251 @@ input[type="range"]:disabled { opacity: 0.4; }
   #sidebar { width: 220px; }
   #price-list-panel { width: 300px; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   LOCATION BAR
+   ═══════════════════════════════════════════════════════════ */
+
+#location-bar {
+  padding: 8px 12px 0;
+}
+
+.loc-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+.loc-bar--gps, .loc-bar--pin {
+  color: var(--accent-green);
+}
+
+.loc-bar__icon { font-size: 16px; flex-shrink: 0; }
+.loc-bar__label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
+
+.loc-bar__switch, .loc-bar__clear, .loc-bar__gps {
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.loc-bar__gps { color: var(--accent-blue); }
+.loc-bar__clear { color: var(--accent-red); }
+
+.loc-bar__input-wrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.loc-bar__search-icon {
+  position: absolute;
+  left: 8px;
+  font-size: 14px;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.loc-bar__input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  padding: 4px 4px 4px 28px;
+}
+.loc-bar__input::placeholder { color: var(--text-muted); }
+
+.loc-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: 500;
+  overflow: hidden;
+}
+.loc-suggestions.hidden { display: none; }
+
+.loc-suggestion {
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+}
+.loc-suggestion:last-child { border-bottom: none; }
+.loc-suggestion:hover { background: var(--bg-hover); }
+.loc-suggestion--status { color: var(--text-muted); cursor: default; }
+
+.loc-bar__confirmed {
+  font-size: 12px;
+  color: var(--accent-green);
+  padding: 4px 12px 0;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   NEARBY PANEL
+   ═══════════════════════════════════════════════════════════ */
+
+#nearby-panel {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  z-index: 400;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  pointer-events: none;
+}
+#nearby-panel.nearby-panel--visible {
+  transform: translateY(0);
+  pointer-events: all;
+}
+
+.nearby-panel {
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.5);
+  padding: 12px 16px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.nearby-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  gap: 8px;
+}
+.nearby-panel__header strong { color: var(--text-primary); }
+
+.nearby-panel__clear {
+  background: none;
+  border: 1px solid var(--accent-red);
+  color: var(--accent-red);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.nearby-panel__cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.nearby-col__title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.nearby-row {
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+.nearby-row:hover { background: var(--bg-hover); }
+.nearby-row--empty { color: var(--text-muted); font-size: 12px; }
+
+.nearby-row__name {
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nearby-row__meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+.nearby-row__price { color: var(--accent-green); font-weight: 700; }
+.nearby-row__dist { color: var(--accent-blue); }
+.nearby-anomaly { font-size: 10px; }
+
+/* ═══════════════════════════════════════════════════════════
+   FUEL CALCULATOR
+   ═══════════════════════════════════════════════════════════ */
+
+#fuel-calculator {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+}
+
+.fuel-calc__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 0;
+  user-select: none;
+}
+.fuel-calc__chevron { font-size: 11px; }
+
+.fuel-calc__body {
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  max-height: 400px;
+}
+.fuel-calc__body--collapsed { max-height: 0; }
+
+.fuel-calc__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.fuel-calc__row label { width: 80px; flex-shrink: 0; }
+.fuel-calc__row input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  padding: 4px 6px;
+  outline: none;
+  min-width: 0;
+}
+.fuel-calc__unit { color: var(--text-muted); font-size: 11px; width: 28px; flex-shrink: 0; }
+
+.fuel-calc__results {
+  margin-top: 10px;
+  padding: 8px;
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
+}
+.fc-result { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+.fc-result strong { color: var(--text-primary); }
+.fc-result--cost strong { color: var(--accent-green); font-size: 14px; }
+.fc-result--ok { color: var(--accent-green); }
+.fc-hint { font-size: 12px; color: var(--text-muted); text-align: center; }
