@@ -391,6 +391,46 @@ function showMockBanner(show) {
   if (banner) banner.classList.toggle('visible', show);
 }
 
+// ─── PWA Install Banner ───────────────────────────────────────────────────
+
+let _deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  _deferredInstallPrompt = e;
+
+  // Don't re-show if user already dismissed
+  if (sessionStorage.getItem('pwa_install_dismissed')) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'pwa-install-banner';
+  banner.innerHTML = `
+    <span>⛽ Instala Gasolina Inteligente para acceso rápido</span>
+    <button id="pwa-install-btn">Instalar</button>
+    <button id="pwa-install-dismiss" aria-label="Cerrar">✕</button>`;
+  document.body.appendChild(banner);
+
+  document.getElementById('pwa-install-btn')?.addEventListener('click', async () => {
+    banner.remove();
+    if (_deferredInstallPrompt) {
+      _deferredInstallPrompt.prompt();
+      const { outcome } = await _deferredInstallPrompt.userChoice;
+      log.info(`PWA install outcome: ${outcome}`);
+      _deferredInstallPrompt = null;
+    }
+  });
+
+  document.getElementById('pwa-install-dismiss')?.addEventListener('click', () => {
+    banner.remove();
+    sessionStorage.setItem('pwa_install_dismissed', '1');
+  });
+});
+
+window.addEventListener('appinstalled', () => {
+  log.info('PWA installed');
+  _deferredInstallPrompt = null;
+});
+
 // ─── Global Error Handler ─────────────────────────────────────────────────
 
 window.addEventListener('unhandledrejection', (event) => {

@@ -11,6 +11,7 @@ import { formatPriceMXN, formatDistance, esc } from '../utils/helpers.js';
 import { createLogger }             from '../utils/logger.js';
 import { getFreshness, freshnessLabel } from '../utils/freshness.js';
 import { openProfecoReport, renderReportButton } from './profeco-report.js';
+import { formatNearbyMessage } from '../integrations/whatsapp-formatter.js';
 
 const log = createLogger('station-card');
 
@@ -88,7 +89,13 @@ function closeCard() {
 function buildCardHTML(station, ft, history, nearby, stats, anomaly, cheapestNearby, mostExpNearby, allData) {
   const p     = station.prices;
   const color = getBrandColor(station.brand);
-  const mapsUrl = `https://www.google.com/maps?q=${station.lat},${station.lng}`;
+  const mapsUrl   = `https://www.google.com/maps?q=${station.lat},${station.lng}`;
+  const shareUrl  = `${location.origin}${location.pathname}#?station=${encodeURIComponent(station.id)}`;
+  const waText    = encodeURIComponent(
+    `⛽ ${station.name}\n📍 ${station.address}, ${station.city}\n` +
+    (station.prices?.[ft] != null ? `💰 ${ft}: $${station.prices[ft].toFixed(2)}/L\n` : '') +
+    `🔗 ${shareUrl}`
+  );
   const fresh = freshnessLabel(getFreshness(station.updatedAt ?? null));
   const trend = _priceTrend(station.price_history, ft);
 
@@ -172,6 +179,10 @@ function buildCardHTML(station, ft, history, nearby, stats, anomaly, cheapestNea
         <div class="card-address">
           📍 ${esc(station.address)}, ${esc(station.city)}, ${esc(station.state)}
           <a href="${mapsUrl}" target="_blank" class="maps-link">Open in Maps ↗</a>
+        </div>
+        <div class="card-share-row">
+          <button class="share-btn share-btn--link" id="card-copy-link" title="Copiar enlace">🔗 Compartir</button>
+          <a class="share-btn share-btn--wa" href="https://wa.me/?text=${waText}" target="_blank" rel="noopener" title="Compartir por WhatsApp">💬 WhatsApp</a>
         </div>
 
         ${station.distanceKm != null ? `
@@ -360,6 +371,13 @@ function renderChart(station, ft, history) {
 
 function attachCardListeners(station) {
   document.getElementById('card-close-btn')?.addEventListener('click', closeCard);
+
+  document.getElementById('card-copy-link')?.addEventListener('click', async () => {
+    const shareUrl = `${location.origin}${location.pathname}#?station=${encodeURIComponent(station.id)}`;
+    try { await navigator.clipboard.writeText(shareUrl); } catch { /* denied */ }
+    const appModule = await import('../../app.js');
+    appModule.showToast('Enlace copiado 🔗', 'success');
+  });
 
   _drawer.querySelectorAll('.profeco-btn').forEach(btn => {
     btn.addEventListener('click', async () => {

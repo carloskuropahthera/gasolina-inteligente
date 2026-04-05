@@ -193,6 +193,25 @@ export function parseURLHash() {
     setState({ filters: { ...getState().filters, ...update } });
     log.info('Parsed URL hash filters', update);
   }
+
+  // Station deep-link: open a specific station card from URL
+  if (params.has('station')) {
+    const stationId = params.get('station');
+    // Defer until data is loaded (mergedData may be empty at parse time)
+    const unsub = (() => {
+      let fired = false;
+      return subscribe('mergedData', (data) => {
+        if (fired || !data.length) return;
+        const match = data.find(s => s.id === stationId);
+        if (match) {
+          fired = true;
+          setState({ selectedStation: match });
+          log.info(`Deep-linked to station: ${match.name}`);
+        }
+      });
+    })();
+    void unsub; // suppress unused warning — subscriber auto-cleans on match
+  }
 }
 
 function writeURLHash(filters) {

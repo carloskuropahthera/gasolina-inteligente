@@ -1,0 +1,40 @@
+{
+  "name": "Gasolina Inteligente",
+  "short_name": "Gasolina",
+  "description": "Inteligencia de precios de combustible en México",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#0D0D0D",
+  "background_color": "#0D0D0D",
+  "lang": "es-MX",
+  "categories": ["navigation", "utilities"],
+  "icons": [
+    {
+      "src": "icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Precios más baratos",
+      "short_name": "Baratos",
+      "url": "/#?fuel=regular",
+      "description": "Ver gasolineras más baratas"
+    },
+    {
+      "name": "Premium",
+      "short_name": "Premium",
+      "url": "/#?fuel=premium",
+      "description": "Ver precios de gasolina Premium"
+    }
+  ]
+}

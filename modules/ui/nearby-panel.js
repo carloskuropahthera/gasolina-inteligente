@@ -5,6 +5,7 @@
 import { getState, setState, subscribe } from '../utils/state.js';
 import { createLogger } from '../utils/logger.js';
 import { formatPriceMXN, formatDistance } from '../utils/helpers.js';
+import { formatNearbyMessage } from '../integrations/whatsapp-formatter.js';
 
 const log = createLogger('nearby-panel');
 
@@ -71,7 +72,10 @@ function _render() {
     <div class="nearby-panel">
       <div class="nearby-panel__header">
         <span>📍 Estaciones en <strong>${maxKm} km</strong> — ${withDist.length} encontradas</span>
-        ${_clearBtn()}
+        <div class="nearby-panel__actions">
+          <button class="nearby-wa-btn" id="nearby-share-wa" title="Compartir por WhatsApp">💬</button>
+          ${_clearBtn()}
+        </div>
       </div>
       <div class="nearby-panel__cols">
         <div class="nearby-col">
@@ -121,6 +125,17 @@ function _wire() {
   document.getElementById('nearby-clear')?.addEventListener('click', () => {
     setState({ userLocation: null, userLocationSource: null, userLocationLabel: null });
     localStorage.removeItem('gi_userLocation');
+  });
+
+  document.getElementById('nearby-share-wa')?.addEventListener('click', () => {
+    const { filteredData, filters, userLocation } = getState();
+    const fuelType = filters.fuelType ?? 'regular';
+    const nearby = filteredData
+      .filter(s => s.distanceKm != null && s.hasData && s.prices?.[fuelType] != null)
+      .sort((a, b) => a.prices[fuelType] - b.prices[fuelType])
+      .slice(0, 5);
+    const msg = formatNearbyMessage(nearby, userLocation, fuelType);
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
   });
 
   document.querySelectorAll('.nearby-row[data-id]').forEach(row => {
