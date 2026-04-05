@@ -16,6 +16,7 @@ let _markerMap  = new Map(); // stationId → L.Marker
 let _heatLayer  = null;
 let _userPin    = null; // L.Marker for drop-a-pin
 let _radiusCircle = null; // L.Circle for distance radius
+let _lastLabelZone = null; // 'dot' | 'label' — tracks price-label threshold
 
 const TILE_URL     = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTRIB  = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
@@ -50,18 +51,28 @@ export function initMap(containerId) {
   });
   _map.addLayer(_markers);
 
-  // Price labels: show price pills on markers when zoomed to street level
+  // Price labels: show price pills on markers when zoomed to street level.
+  // Only update markers in the visible viewport — not all 14k — and only when
+  // crossing the zoom-13 threshold, not on every incremental zoom step.
   _map.on('zoomend', () => {
     const zoom = _map.getZoom();
+    const zone = zoom >= 13 ? 'label' : 'dot';
+    if (zone === _lastLabelZone) return; // threshold not crossed — skip
+    _lastLabelZone = zone;
+
+    const bounds   = _map.getBounds();
+    const { filters } = getState();
+    const fuelType = filters.fuelType ?? 'regular';
+
     _markers.eachLayer(marker => {
-      if (marker._giStation) {
-        const station = marker._giStation;
-        const { filters } = getState();
-        const fuelType = filters.fuelType ?? 'regular';
-        const price = station.prices?.[fuelType];
-        const color = getBrandColor(station.brand);
-        marker.setIcon(createMarkerIcon(color, false, station._isAnomaly, zoom >= 13 ? price : null));
-      }
+      if (!marker._giStation) return;
+      // Skip markers outside the current viewport
+      if (!bounds.contains(marker.getLatLng())) return;
+
+      const station = marker._giStation;
+      const price   = station.prices?.[fuelType];
+      const color   = getBrandColor(station.brand);
+      marker.setIcon(createMarkerIcon(color, false, station._isAnomaly, zone === 'label' ? price : null));
     });
   });
 
@@ -190,6 +201,7 @@ function buildPopup(station) {
 export function renderStations(mergedData, fuelType = 'regular') {
   _markers.clearLayers();
   _markerMap.clear();
+  _lastLabelZone = null; // force price-label re-evaluation on next zoom
 
   // Determine cheapest 10% for star badges
   const prices = mergedData
