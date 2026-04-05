@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50:  #f0fdf9;
+  --color-brand-500: #00e676;
+  --color-brand-600: #00c853;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', monospace;
+}
+
+:root {
+  --bg:        #09090f;
+  --bg-card:   #13131f;
+  --bg-input:  #1a1a2e;
+  --border:    rgba(255,255,255,0.08);
+  --accent:    #00e676;
+  --text:      #f1f1f1;
+  --text-muted:#8888aa;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 99px; }
+
+/* Leaflet overrides */
+.leaflet-container { background: #1a1a2e !important; }
+.leaflet-popup-content-wrapper {
+  background: #13131f !important;
+  color: #f1f1f1 !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important;
+}
+.leaflet-popup-tip { background: #13131f !important; }
+.leaflet-popup-close-button { color: #8888aa !important; }
+.leaflet-control-zoom a {
+  background: #13131f !important;
+  color: #f1f1f1 !important;
+  border-color: rgba(255,255,255,0.1) !important;
+}
+.leaflet-control-attribution {
+  background: rgba(9,9,15,0.8) !important;
+  color: #666 !important;
+  font-size: 10px !important;
+}
+.leaflet-control-attribution a { color: #888 !important; }
+
+/* Price pill on map */
+.gi-price-pill {
+  background: var(--pill-color, #546E7A);
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+.gi-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.4);
+}
+
+/* Station card hover glow */
+.station-row:hover { background: rgba(0,230,118,0.04); }
+
+/* Smooth slide-in for modals */
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.slide-up { animation: slideUp 0.25s ease; }
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  from { background-position: -400px 0; }
+  to   { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #1a1a2e 25%, #252540 50%, #1a1a2e 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 6px;
+}
+
+/* Badge */
+.badge-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 99px;
+  font-size: 11px; font-weight: 600;
+}
