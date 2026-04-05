@@ -71,7 +71,7 @@ async function boot() {
   log.info('Storage ready', storageStats);
 
   // 2. Show loading overlay
-  showLoading('Iniciando Gasolina Inteligente…');
+  showLoading('Iniciando…');
 
   // 3. Initialize all UI shells (DOM must exist)
   initMap('map-container');
@@ -101,16 +101,24 @@ async function boot() {
     showMockBanner(true);
   }
 
-  // 7. Load distance matrix FIRST — anomaly detection inside loadData needs it for O(1) lookups.
-  //    Without it, detectAnomalies falls back to O(n²) haversine which freezes the page.
-  showLoading('Cargando matriz de distancias…');
-  await tryLoadMatrix();
+  // 7. Start matrix loading in background — do NOT await here.
+  //    Stations will render immediately; anomaly detection fires once matrix resolves.
+  //    This eliminates the 2–15 s CSV parse from the critical render path.
+  const matrixPromise = tryLoadMatrix();
 
-  // 8. Load data (anomaly detection will now use the pre-loaded matrix)
+  // 8. Load station data (no longer blocked by matrix)
   showLoading('Cargando estaciones y precios…');
   await loadData();
 
-  // 9. Get user location (non-blocking)
+  // 9. Parse URL hash filters + apply initial render
+  parseURLHash();
+  applyFilters();
+
+  // 10. Hide loading overlay — map + price list are now interactive
+  hideLoading();
+  setState({ isLoading: false, loadingMessage: '' });
+
+  // 11. Get user location (non-blocking)
   getUserLocation().then(loc => {
     if (loc) {
       setState({ userLocation: loc, userLocationSource: 'gps', userLocationLabel: 'Tu ubicación GPS' });
@@ -119,21 +127,18 @@ async function boot() {
     }
   });
 
-  // 10. Parse URL hash filters
-  parseURLHash();
-
-  // 11. Apply initial filters (triggers filteredData → map re-render)
-  applyFilters();
-
-  // 12. Start scraper scheduler
-  await initScraper();
+  // 12. Start scraper scheduler (non-blocking)
+  initScraper().catch(err => log.warn('Scraper init failed', err.message));
 
   // 13. Check if today's data is fresh — prompt if not scraped today
   checkScrapeStatus();
 
-  // 14. Done
-  hideLoading();
-  setState({ isLoading: false, loadingMessage: '' });
+  // 14. Once matrix finishes loading, run anomaly detection in background.
+  //     Uses requestIdleCallback so it doesn't compete with user interactions.
+  matrixPromise.then(() => {
+    const idle = typeof requestIdleCallback !== 'undefined' ? requestIdleCallback : (fn) => setTimeout(fn, 200);
+    idle(() => runAnomalyDetection());
+  });
 
   const ms = Date.now() - startTime;
   log.info(`Boot complete in ${formatDuration(ms)}`);
@@ -143,14 +148,15 @@ async function boot() {
   const [measure] = performance.getEntriesByName('app-boot');
   log.info(`App boot time: ${measure.duration.toFixed(0)}ms`);
 
-  showToast(`Gasolina Inteligente listo — ${getState().mergedData.length} estaciones cargadas`, 'success');
+  const n = getState().mergedData.length;
+  showToast(`${n.toLocaleString('es-MX')} estaciones cargadas`, 'success');
 }
 
 // ─── Data Loading ─────────────────────────────────────────────────────────
 
 async function loadData() {
   const useMock = getState().mockMode;
-  setState({ isLoading: true, loadingMessage: 'Fetching CRE data…' });
+  setState({ isLoading: true, loadingMessage: 'Cargando datos…' });
 
   try {
     // Try storage snapshot first (today's data)
@@ -161,13 +167,12 @@ async function loadData() {
 
     if (!useMock) {
       // Priority 1: static JSON built by Python pipeline (GitHub Actions daily refresh)
-      // Prefer pipeline data only if it's from today; otherwise today's browser snapshot wins
+      showLoading('Descargando precios CRE…');
       const staticResult = await loadStaticData();
       const staticDate   = staticResult.meta?.exportedAt?.slice(0, 10) ?? null;
       const staticIsToday = staticDate === today;
 
       if (staticResult.success && staticResult.data.length > 0) {
-        // Use static if it's today's data, OR if no today's snapshot exists
         if (staticIsToday || !snapshot?.stations) {
           merged = staticResult.data;
           setState({ lastFetch: staticResult.meta.exportedAt });
@@ -186,6 +191,7 @@ async function loadData() {
         setState({ lastFetch: snapshot.fetchedAt });
       } else {
         // Priority 3: live CRE API (CORS proxy)
+        showLoading('Consultando API de la CRE…');
         const result = await fetchAll(useMock);
         if (!result.success) throw new Error(result.error);
         merged = result.data;
@@ -194,25 +200,15 @@ async function loadData() {
       }
     }
 
-    // Run anomaly detection
-    showLoading('Detectando anomalías…');
-    const fuelType = getState().filters.fuelType ?? 'regular';
-    const anomalies = detectAnomalies(merged, fuelType, { method: 'both', threshold: 1.5 });
-
-    // Tag merged data with anomaly flag
-    const anomalyIds = new Set(anomalies.map(a => a.stationId));
-    const tagged = merged.map(s => ({ ...s, _isAnomaly: anomalyIds.has(s.id) }));
+    showLoading(`Procesando ${merged.length.toLocaleString('es-MX')} estaciones…`);
 
     setState({
-      mergedData:  tagged,
-      filteredData: tagged,
-      anomalies,
+      mergedData:   merged,
+      filteredData: merged,
+      anomalies:    [],
     });
 
-    // filteredData subscription already triggers renderStations — just show anomalies
-    if (anomalies.length > 0) showAnomalies(anomalies);
-
-    log.info(`Data ready: ${tagged.length} stations, ${anomalies.length} anomalies`);
+    log.info(`Data ready: ${merged.length} stations (anomaly detection deferred)`);
 
   } catch (err) {
     log.error('loadData failed', err);
@@ -220,6 +216,23 @@ async function loadData() {
     setState({ error: err.message, isLoading: false });
     showToast(`Error loading data: ${err.message}`, 'error');
   }
+}
+
+function runAnomalyDetection() {
+  const { mergedData, filters } = getState();
+  if (!mergedData.length) return;
+
+  const fuelType = filters.fuelType ?? 'regular';
+  log.info('Running background anomaly detection…');
+
+  const anomalies = detectAnomalies(mergedData, fuelType, { method: 'both', threshold: 1.5 });
+  const anomalyIds = new Set(anomalies.map(a => a.stationId));
+  const tagged = mergedData.map(s => ({ ...s, _isAnomaly: anomalyIds.has(s.id) }));
+
+  setState({ mergedData: tagged, filteredData: tagged, anomalies });
+  if (anomalies.length > 0) showAnomalies(anomalies);
+
+  log.info(`Anomaly detection complete: ${anomalies.length} anomalies in ${mergedData.length} stations`);
 }
 
 async function tryLoadMatrix() {

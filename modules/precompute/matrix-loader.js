@@ -81,6 +81,8 @@ function buildIndex(rows) {
  * @param {number} radiusKm - 5, 20, or 50
  * @returns {Promise<boolean>} true if loaded successfully
  */
+const MATRIX_TIMEOUT_MS = 8_000; // abort matrix load after 8s — never block the UI
+
 export async function loadMatrix(radiusKm) {
   if (![5, 20, 50].includes(radiusKm)) throw new Error(`Invalid radius: ${radiusKm}`);
 
@@ -89,7 +91,23 @@ export async function loadMatrix(radiusKm) {
 
   try {
     log.info(`Loading ${radiusKm}km matrix from ${url}…`);
-    const res = await fetch(url);
+
+    const controller = new AbortController();
+    const timeout    = setTimeout(() => controller.abort(), MATRIX_TIMEOUT_MS);
+
+    let res;
+    try {
+      res = await fetch(url, { signal: controller.signal });
+    } catch (err) {
+      clearTimeout(timeout);
+      if (err.name === 'AbortError') {
+        log.warn(`${radiusKm}km matrix load timed out after ${MATRIX_TIMEOUT_MS}ms — skipping`);
+        return false;
+      }
+      throw err;
+    }
+    clearTimeout(timeout);
+
     if (!res.ok) {
       log.info(`${radiusKm}km matrix not found (HTTP ${res.status}) — will use real-time haversine`);
       return false;
