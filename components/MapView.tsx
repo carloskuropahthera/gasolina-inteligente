@@ -25,10 +25,15 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
   const lastZoneRef   = useRef<'dot' | 'label' | null>(null);
   const LRef          = useRef<typeof L | null>(null);
   const selectRef     = useRef(onSelectStation);
+  // Refs keep iconCreateFunction + zoomend always reading current values
+  const fuelTypeRef   = useRef(fuelType);
+  const statsRef      = useRef(stats);
   const [loading, setLoading] = useState(true);
 
-  // Keep selectRef current so popup onclick always has latest callback
-  selectRef.current = onSelectStation;
+  // Always keep refs in sync with latest props (no stale closures)
+  selectRef.current  = onSelectStation;
+  fuelTypeRef.current = fuelType;
+  statsRef.current   = stats;
 
   // ── Init map once ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -44,12 +49,6 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
       const L = Lmod.default;
       LRef.current = L;
 
-      // Expose select callback for popup "Ver detalles" onclick
-      (window as typeof window & { _gi_select?: (id: string) => void })._gi_select = (id: string) => {
-        const station = stations.find(s => s.id === id);
-        if (station) selectRef.current(station);
-      };
-
       const map = L.map(containerRef.current!, {
         center: [23.6345, -102.5528],
         zoom: 5,
@@ -62,16 +61,22 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
         maxZoom: 19,
       }).addTo(map);
 
+      // Hide loading once first tiles load
+      map.once('load', () => setLoading(false));
+      // Fallback: clear loading after 3s even if tiles don't fire 'load'
+      setTimeout(() => setLoading(false), 3000);
+
       const markers = L.markerClusterGroup({
         maxClusterRadius: 50,
         disableClusteringAtZoom: 13,
         chunkedLoading: true,
         showCoverageOnHover: false,
-        // Show min price in cluster bubble instead of marker count
+        // Uses ref so it always reads the current fuelType, not the captured one
         iconCreateFunction: (cluster) => {
+          const ft = fuelTypeRef.current;
           const children = cluster.getAllChildMarkers() as unknown as Array<{ _giStation?: Station }>;
           const prices = children
-            .map(m => m._giStation?.prices?.[fuelType])
+            .map(m => m._giStation?.prices?.[ft])
             .filter((v): v is number => v != null);
           const minPrice = prices.length ? Math.min(...prices) : null;
           const count = cluster.getChildCount();
@@ -88,21 +93,20 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
       markersRef.current = markers;
       mapRef.current = map;
 
-      map.whenReady(() => setLoading(false));
-
-      // Price labels on zoom threshold crossing
+      // Price labels on zoom threshold crossing — uses refs for current fuelType/stats
       map.on('zoomend', () => {
         const zoom = map.getZoom();
         const zone = zoom >= 13 ? 'label' : 'dot';
         if (zone === lastZoneRef.current) return;
         lastZoneRef.current = zone;
         const bounds = map.getBounds();
+        const ft = fuelTypeRef.current;
+        const st = statsRef.current;
         markers.eachLayer((layer: unknown) => {
           const m = layer as { _giStation?: Station; setIcon?: (icon: unknown) => void; getLatLng?: () => { lat: number; lng: number } };
           if (!m._giStation || !m.setIcon || !m.getLatLng) return;
           if (!bounds.contains(m.getLatLng() as Parameters<typeof bounds.contains>[0])) return;
-          const s = m._giStation;
-          m.setIcon(makeIcon(L, s, fuelType, stats, zone === 'label'));
+          m.setIcon(makeIcon(L, m._giStation, ft, st, zone === 'label'));
         });
       });
     });
@@ -116,14 +120,14 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Re-render markers when stations/fuelType change ───────────────────
+  // ── Re-render markers when stations/fuelType/stats change ─────────────
   useEffect(() => {
     const L = LRef.current;
     const markers = markersRef.current;
     const map = mapRef.current;
     if (!L || !markers || !map) return;
 
-    // Update _gi_select with fresh stations list
+    // Update global select handler with fresh station list
     (window as typeof window & { _gi_select?: (id: string) => void })._gi_select = (id: string) => {
       const station = stations.find(s => s.id === id);
       if (station) selectRef.current(station);
@@ -134,7 +138,6 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
     const zoom = map.getZoom();
     const showLabels = zoom >= 13;
 
-    // Build all marker objects first (sync, fast)
     const layers: ReturnType<typeof L.marker>[] = [];
     for (const station of stations) {
       if (!station.lat || !station.lng) continue;
@@ -146,13 +149,19 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
       layers.push(m);
     }
 
-    // Add in chunks with rAF to avoid blocking the main thread
+    // Refresh cluster icons to pick up new fuelType (after clearLayers/addLayers)
+    // The iconCreateFunction reads fuelTypeRef dynamically so refreshClusters does it
     let i = 0;
     function addChunk() {
       const end = Math.min(i + CHUNK_SIZE, layers.length);
       markers!.addLayers(layers.slice(i, end));
       i = end;
-      if (i < layers.length) requestAnimationFrame(addChunk);
+      if (i < layers.length) {
+        requestAnimationFrame(addChunk);
+      } else {
+        // After all markers added, refresh cluster icons
+        (markers as unknown as { refreshClusters?: () => void }).refreshClusters?.();
+      }
     }
     addChunk();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -178,7 +187,11 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
   // ── Pan to selected station ───────────────────────────────────────────
   useEffect(() => {
     if (!selectedStation || !mapRef.current) return;
-    mapRef.current.setView([selectedStation.lat, selectedStation.lng], Math.max(mapRef.current.getZoom(), 14), { animate: true });
+    mapRef.current.setView(
+      [selectedStation.lat, selectedStation.lng],
+      Math.max(mapRef.current.getZoom(), 14),
+      { animate: true }
+    );
   }, [selectedStation]);
 
   return (
@@ -195,7 +208,7 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
         </div>
       )}
 
-      {/* Empty state overlay */}
+      {/* Empty state */}
       {!loading && stations.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center bg-[#0d0d1a]/80 z-10 pointer-events-none">
           <div className="text-center space-y-3 bg-[#13131f] border border-white/8 rounded-2xl p-8">
@@ -203,6 +216,17 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
             <p className="text-zinc-300 font-semibold">Sin estaciones</p>
             <p className="text-zinc-500 text-sm">Ajusta los filtros para ver resultados</p>
           </div>
+        </div>
+      )}
+
+      {/* Legend */}
+      {!loading && (
+        <div className="absolute bottom-6 left-3 z-10 flex items-center gap-2
+                        bg-[#13131f]/90 backdrop-blur-sm border border-white/8
+                        rounded-xl px-3 py-2 text-[10px] text-zinc-400">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#0077BB] inline-block" /> Barata
+          <span className="w-2.5 h-2.5 rounded-full bg-[#BBBBBB] inline-block ml-1" /> Prom.
+          <span className="w-2.5 h-2.5 rounded-full bg-[#EE7733] inline-block ml-1" /> Cara
         </div>
       )}
     </div>
@@ -236,22 +260,32 @@ function makeIcon(
 
 function buildPopup(station: Station, fuelType: FuelType): string {
   const p = station.prices;
-  const distStr = station.distanceKm != null ? `<div style="font-size:11px;color:#8888aa;margin-top:2px">📍 ${formatDistance(station.distanceKm)}</div>` : '';
-  const freshStr = p?.updatedAt ? `<div style="font-size:10px;color:#666;margin-top:4px">CRE: ${timeAgo(p.updatedAt)}</div>` : '';
+  const distStr = station.distanceKm != null
+    ? `<div style="font-size:11px;color:#8888aa;margin-top:2px">📍 ${formatDistance(station.distanceKm)}</div>`
+    : '';
+  const freshStr = p?.updatedAt
+    ? `<div style="font-size:10px;color:#666;margin-top:4px">CRE: ${timeAgo(p.updatedAt)}</div>`
+    : '';
   const locationStr = station.city ? `${esc(station.brand)} · ${esc(station.city)}` : esc(station.brand);
+  const activePrice = p?.[fuelType];
+  const activePriceStr = activePrice != null
+    ? `<div style="font-size:16px;font-weight:700;color:#a0c8ff;margin:6px 0 2px">${formatMXN(activePrice)}</div>`
+    : '';
 
   return `
-    <div style="min-width:180px">
-      <div style="font-weight:700;font-size:13px;margin-bottom:4px">${esc(station.name)}</div>
+    <div style="min-width:190px;font-family:system-ui,sans-serif">
+      <div style="font-weight:700;font-size:13px;margin-bottom:2px;color:#f1f1f1">${esc(station.name)}</div>
       <div style="font-size:11px;color:#8888aa">${locationStr}</div>
       ${distStr}
-      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+      ${activePriceStr}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
         ${priceChip('Magna', p?.regular)}
         ${priceChip('Premium', p?.premium)}
         ${priceChip('Diésel', p?.diesel)}
       </div>
       ${freshStr}
-      <div style="margin-top:8px;font-size:11px;color:#00e676;cursor:pointer;font-weight:600"
+      <div style="margin-top:10px;font-size:11px;color:#00e676;cursor:pointer;font-weight:600;
+                  padding:4px 0;border-top:1px solid rgba(255,255,255,0.06)"
            onclick="window._gi_select?.('${esc(station.id)}')">
         Ver detalles →
       </div>
@@ -260,8 +294,8 @@ function buildPopup(station: Station, fuelType: FuelType): string {
 
 function priceChip(label: string, val: number | null | undefined): string {
   if (val == null) return '';
-  return `<span style="background:rgba(255,255,255,0.06);border-radius:4px;padding:2px 6px;font-size:11px">
-    <span style="color:#8888aa">${label} </span><strong>${formatMXN(val)}</strong>
+  return `<span style="background:rgba(255,255,255,0.06);border-radius:4px;padding:2px 5px;font-size:10px">
+    <span style="color:#8888aa">${label} </span><strong style="color:#e0e0e0">${formatMXN(val)}</strong>
   </span>`;
 }
 
