@@ -39,6 +39,9 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    // Fallback: always clear loading after 2s even if imports or tiles hang
+    const loadingFallback = setTimeout(() => setLoading(false), 2000);
+
     Promise.all([
       import('leaflet'),
       import('leaflet/dist/leaflet.css' as never),
@@ -46,6 +49,7 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
       import('leaflet.markercluster/dist/MarkerCluster.css' as never),
       import('leaflet.markercluster/dist/MarkerCluster.Default.css' as never),
     ]).then(([Lmod]) => {
+      if (mapRef.current) return; // Guard: prevent double-init in React Strict Mode
       const L = Lmod.default;
       LRef.current = L;
 
@@ -61,10 +65,9 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
         maxZoom: 19,
       }).addTo(map);
 
-      // Hide loading once first tiles load
-      map.once('load', () => setLoading(false));
-      // Fallback: clear loading after 3s even if tiles don't fire 'load'
-      setTimeout(() => setLoading(false), 3000);
+      // Clear loading immediately — map is ready, tiles stream in behind the markers
+      clearTimeout(loadingFallback);
+      setLoading(false);
 
       const markers = L.markerClusterGroup({
         maxClusterRadius: 50,
@@ -112,6 +115,7 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
     });
 
     return () => {
+      clearTimeout(loadingFallback);
       mapRef.current?.remove();
       mapRef.current = null;
       markersRef.current = null;
