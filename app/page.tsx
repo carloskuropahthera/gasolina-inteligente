@@ -3,7 +3,9 @@
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { Station, AppFilters, ViewMode, FuelType } from '@/lib/types';
-import { filterStations, addDistances, computeStats, DEFAULT_FILTERS } from '@/lib/utils';
+import { filterStations, addDistances, computeStats, DEFAULT_FILTERS, timeAgo } from '@/lib/utils';
+import { useStationsCache } from '@/lib/useStationsCache';
+import { useFavorites } from '@/lib/useFavorites';
 import TopBar      from '@/components/TopBar';
 import PriceStats  from '@/components/PriceStats';
 import ViewToggle  from '@/components/ViewToggle';
@@ -28,18 +30,24 @@ const MapView = dynamic(() => import('@/components/MapView'), {
 const RouteOptimizer = dynamic(() => import('@/components/RouteOptimizer'), { ssr: false });
 
 export default function Home() {
+  const { stations: fetchedStations, exportedAt, isLoading, cacheAgeMs } = useStationsCache();
+  const { favorites, isFavorite, toggle: toggleFav } = useFavorites();
+
   const [allStations,     setAllStations]     = useState<Station[]>([]);
   const [filters,         setFilters]         = useState<AppFilters>(DEFAULT_FILTERS);
   const [viewMode,        setViewMode]        = useState<ViewMode>('map');
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [userLocation,    setUserLocation]    = useState<{ lat: number; lng: number } | null>(null);
-  const [isLoading,       setIsLoading]       = useState(true);
-  const [exportedAt,      setExportedAt]      = useState<string | null>(null);
   const [showFilters,     setShowFilters]     = useState(false);
   const [showReport,      setShowReport]      = useState(false);
   const [searchQuery,     setSearchQuery]     = useState('');
   const [debouncedQuery,  setDebouncedQuery]  = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
+
+  // Sync IndexedDB cache results into allStations
+  useEffect(() => {
+    if (fetchedStations.length > 0) setAllStations(fetchedStations);
+  }, [fetchedStations]);
 
   // ── Search debounce ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -63,25 +71,7 @@ export default function Home() {
     return () => window.removeEventListener('keydown', fn);
   }, []);
 
-  // ── Fetch stations ──────────────────────────────────────────────────────
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const res  = await fetch('/api/stations');
-        const data = await res.json();
-        if (cancelled) return;
-        setAllStations(data.stations ?? []);
-        setExportedAt(data.meta?.exportedAt ?? null);
-      } catch {
-        // keep empty array
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    }
-    load();
-    return () => { cancelled = true; };
-  }, []);
+  // Stations loaded from IndexedDB via useStationsCache — no separate fetch needed
 
   // ── GPS location ────────────────────────────────────────────────────────
   const requestLocation = useCallback(() => {
@@ -184,6 +174,13 @@ export default function Home() {
         </span>
       </div>
 
+      {/* ── Stale cache banner ───────────────────────────────────────── */}
+      {cacheAgeMs != null && cacheAgeMs > 4 * 60 * 60 * 1000 && (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500/10 border-b border-yellow-500/20 shrink-0">
+          <span className="text-yellow-400 text-xs">⚠️ Datos guardados hace {timeAgo(new Date(Date.now() - cacheAgeMs).toISOString())} — actualizando…</span>
+        </div>
+      )}
+
       {/* ── Main Content ────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden relative">
 
@@ -226,6 +223,8 @@ export default function Home() {
               fuelType={filters.fuelType}
               userLocation={userLocation}
               onSelectStation={setSelectedStation}
+              favorites={favorites}
+              onToggleFavorite={toggleFav}
             />
           )}
           {viewMode === 'route' && (

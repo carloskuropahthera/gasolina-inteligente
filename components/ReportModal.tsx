@@ -39,12 +39,31 @@ export default function ReportModal({ station, fuelType, onClose, onSubmit }: Pr
     return () => window.removeEventListener('keydown', fn);
   }, [onClose]);
 
+  // Haversine distance in km
+  const haversine = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  const PROXIMITY_KM = 0.6; // 600m — same gate as Waze
+
   const lockGPS = () => {
     if (!navigator.geolocation) { setError('GPS no disponible'); return; }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       pos => {
-        setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        const distKm = haversine(coords.lat, coords.lng, station.lat, station.lng);
+        if (distKm > PROXIMITY_KM) {
+          setError(`Debes estar a menos de 600m de la estación para reportar (estás a ${(distKm * 1000).toFixed(0)}m).`);
+          setLocating(false);
+          return;
+        }
+        setUserCoords(coords);
         setLocLocked(true);
         setLocating(false);
       },
@@ -64,6 +83,10 @@ export default function ReportModal({ station, fuelType, onClose, onSubmit }: Pr
     const parsed = parseFloat(price);
     if (!price || isNaN(parsed) || parsed < 5 || parsed > 50) {
       setError('Ingresa un precio válido (entre $5 y $50)');
+      return;
+    }
+    if (!locLocked) {
+      setError('Debes verificar tu ubicación para enviar un reporte.');
       return;
     }
     setError(null);
@@ -187,26 +210,29 @@ export default function ReportModal({ station, fuelType, onClose, onSubmit }: Pr
             )}
           </div>
 
-          {/* GPS lock */}
+          {/* GPS proximity lock — required to submit */}
           <div>
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              Verificación de ubicación
+              Verificación de ubicación <span className="text-red-400">*</span>
             </label>
+            <p className="text-[11px] text-zinc-600 mt-1 mb-2">
+              Debes estar a &lt;600m de la estación (como Waze). Esto evita reportes falsos.
+            </p>
             <button
               onClick={lockGPS}
               disabled={locating || locLocked}
-              className={`mt-2 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
+              className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
                          border text-sm font-medium transition-all
                 ${locLocked
                   ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                   : 'bg-white/5 border-white/10 text-zinc-400 hover:bg-white/8'}`}
             >
               {locating ? (
-                <><span className="animate-spin">⏳</span> Localizando…</>
+                <><span className="animate-spin">⏳</span> Verificando ubicación…</>
               ) : locLocked ? (
-                <>📍 Ubicación verificada</>
+                <>✅ Ubicación verificada — estás en rango</>
               ) : (
-                <>📍 Verificar que estoy aquí (opcional)</>
+                <>📍 Confirmar que estoy en esta estación</>
               )}
             </button>
           </div>
@@ -257,7 +283,7 @@ export default function ReportModal({ station, fuelType, onClose, onSubmit }: Pr
             Enviar reporte · +10 pts
           </button>
           <p className="text-center text-xs text-zinc-600 mt-2">
-            Los reportes verificados con GPS y foto ganan puntos extra
+            Solo se aceptan reportes con GPS verificado (&lt;600m)
           </p>
         </div>
       </div>

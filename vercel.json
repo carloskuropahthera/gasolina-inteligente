@@ -2,6 +2,9 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
+  "crons": [
+    { "path": "/api/cron/refresh", "schedule": "0 */4 * * *" }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",

@@ -105,3 +105,21 @@ body {
   padding: 2px 8px; border-radius: 99px;
   font-size: 11px; font-weight: 600;
 }
+
+/* Cluster min-price bubble — replaces default LeafletMarkerCluster count bubble */
+.gi-cluster {
+  background: #13131f;
+  border: 2px solid #0077BB;
+  color: #a0c8ff;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: ui-monospace, monospace;
+  border-radius: 12px;
+  padding: 2px 7px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,119,187,0.4);
+  line-height: 1.5;
+}
+.gi-cluster::after {
+  display: none; /* hide default Leaflet cluster ring */
+}

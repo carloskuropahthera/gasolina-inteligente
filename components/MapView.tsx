@@ -67,6 +67,22 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
         disableClusteringAtZoom: 13,
         chunkedLoading: true,
         showCoverageOnHover: false,
+        // Show min price in cluster bubble instead of marker count
+        iconCreateFunction: (cluster) => {
+          const children = cluster.getAllChildMarkers() as unknown as Array<{ _giStation?: Station }>;
+          const prices = children
+            .map(m => m._giStation?.prices?.[fuelType])
+            .filter((v): v is number => v != null);
+          const minPrice = prices.length ? Math.min(...prices) : null;
+          const count = cluster.getChildCount();
+          const label = minPrice != null ? `$${minPrice.toFixed(2)}` : `${count}`;
+          return L.divIcon({
+            html: `<div class="gi-cluster" data-count="${count}">${label}</div>`,
+            className: '',
+            iconSize: [56, 24],
+            iconAnchor: [28, 12],
+          });
+        },
       } as L.MarkerClusterGroupOptions);
       map.addLayer(markers);
       markersRef.current = markers;

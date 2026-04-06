@@ -1,7 +1,9 @@
 'use client';
 import type { Station, FuelType, NationalStats } from '@/lib/types';
 import { formatMXN, formatDistance, getBrandColor, timeAgo, FUEL_LABELS } from '@/lib/utils';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useFavorites } from '@/lib/useFavorites';
+import { usePriceAlerts } from '@/lib/usePriceAlerts';
 
 interface Props {
   station: Station;
@@ -11,7 +13,15 @@ interface Props {
   onReport: () => void;
 }
 
+const TANK_LITERS = 50;
+
 export default function StationModal({ station, fuelType, stats, onClose, onReport }: Props) {
+  const { isFavorite, toggle: toggleFav } = useFavorites();
+  const { getAlert, addAlert, removeAlert } = usePriceAlerts();
+  const [alertInput, setAlertInput] = useState('');
+  const [showAlertInput, setShowAlertInput] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+
   // Close on Escape
   useEffect(() => {
     const fn = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -23,6 +33,8 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
   const brandColor = getBrandColor(station.brand);
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${station.lat},${station.lng}`;
   const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}#station=${encodeURIComponent(station.id)}`;
+  const fav = isFavorite(station.id);
+  const existingAlert = getAlert(station.id, fuelType);
 
   const vs = (price: number | null | undefined, avg: number) => {
     if (price == null || !avg) return null;
@@ -31,8 +43,47 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
     return { delta, isHigh: delta > 0 };
   };
 
-  const copyLink = async () => {
-    try { await navigator.clipboard.writeText(shareUrl); } catch { /* denied */ }
+  // Tank savings vs. national average in pesos
+  const tankSavings = (price: number | null | undefined, avg: number) => {
+    if (price == null || !avg) return null;
+    const saving = (avg - price) * TANK_LITERS;
+    if (saving <= 0.5) return null;
+    return saving;
+  };
+
+  const handleShare = async () => {
+    const activePrice = p?.[fuelType];
+    const text = `⛽ ${station.name}\n📍 ${station.address}${station.city ? `, ${station.city}` : ''}\n💰 ${FUEL_LABELS[fuelType]}: ${formatMXN(activePrice)}\n🔗 ${shareUrl}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${station.name} — Gasolina Inteligente`,
+          text,
+          url: shareUrl,
+        });
+      } catch { /* user cancelled */ }
+    } else {
+      try {
+        await navigator.clipboard.writeText(text);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2000);
+      } catch { /* denied */ }
+    }
+  };
+
+  const handleSetAlert = () => {
+    const threshold = parseFloat(alertInput);
+    if (isNaN(threshold) || threshold < 5 || threshold > 50) return;
+    addAlert({
+      stationId: station.id,
+      stationName: station.name,
+      fuelType,
+      threshold,
+      createdAt: new Date().toISOString(),
+    });
+    setShowAlertInput(false);
+    setAlertInput('');
   };
 
   return (
@@ -72,6 +123,14 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
               )}
             </div>
           </div>
+          {/* Favorite button */}
+          <button
+            onClick={() => toggleFav(station.id)}
+            title={fav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+            className={`text-xl shrink-0 mt-0.5 transition-all ${fav ? 'text-yellow-400' : 'text-zinc-600 hover:text-zinc-300'}`}
+          >
+            {fav ? '★' : '☆'}
+          </button>
           <button onClick={onClose}
             className="text-zinc-500 hover:text-zinc-200 transition-colors text-xl leading-none shrink-0 mt-1">
             ✕
@@ -83,7 +142,7 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
 
           {/* Address */}
           <div className="text-sm text-zinc-400">
-            📍 {station.address}, {station.city}, {station.state}
+            📍 {station.address}{station.city ? `, ${station.city}` : ''}{station.state ? `, ${station.state}` : ''}
             {station.distanceKm != null && (
               <span className="ml-2 text-zinc-500">· {formatDistance(station.distanceKm)}</span>
             )}
@@ -102,6 +161,7 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
               {(['regular','premium','diesel'] as FuelType[]).map(ft => {
                 const price = p?.[ft];
                 const cmp   = vs(price, stats[ft].avg);
+                const saving = ft === fuelType ? tankSavings(price, stats[ft].avg) : null;
                 return (
                   <div key={ft} className={`rounded-xl p-3 border text-center transition-all
                     ${ft === fuelType
@@ -113,14 +173,78 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
                       {formatMXN(price)}
                     </div>
                     {cmp && (
-                      <div className={`text-[10px] mt-0.5 ${cmp.isHigh ? 'text-red-400' : 'text-emerald-400'}`}>
+                      <div className={`text-[10px] mt-0.5 ${cmp.isHigh ? 'text-orange-400' : 'text-blue-400'}`}>
                         {cmp.isHigh ? '▲' : '▼'} ${Math.abs(cmp.delta).toFixed(2)} vs prom.
+                      </div>
+                    )}
+                    {saving != null && (
+                      <div className="text-[10px] mt-1 text-emerald-400 font-semibold">
+                        Ahorra ${saving.toFixed(0)} en 50L
                       </div>
                     )}
                   </div>
                 );
               })}
             </div>
+          </div>
+
+          {/* Price alert */}
+          <div className="rounded-xl border border-white/8 bg-white/2 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                Alerta de precio
+              </h3>
+              <span className="text-[10px] text-zinc-600">🔔</span>
+            </div>
+            {existingAlert ? (
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-emerald-400">
+                  Alerta activa: {FUEL_LABELS[fuelType]} &lt; {formatMXN(existingAlert.threshold)}
+                </p>
+                <button
+                  onClick={() => removeAlert(station.id, fuelType)}
+                  className="text-xs text-zinc-600 hover:text-red-400 transition-colors"
+                >
+                  Eliminar
+                </button>
+              </div>
+            ) : showAlertInput ? (
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="5"
+                    max="50"
+                    placeholder={`${((p?.[fuelType] ?? 20) - 0.5).toFixed(2)}`}
+                    value={alertInput}
+                    onChange={e => setAlertInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSetAlert()}
+                    autoFocus
+                    className="w-full pl-7 pr-2 py-1.5 bg-white/5 border border-white/10 rounded-lg
+                               text-sm text-zinc-200 focus:outline-none focus:border-emerald-500/40"
+                  />
+                </div>
+                <button onClick={handleSetAlert}
+                  className="px-3 py-1.5 bg-emerald-500/15 border border-emerald-500/30
+                             text-emerald-400 text-xs rounded-lg font-medium hover:bg-emerald-500/25 transition-colors">
+                  Guardar
+                </button>
+                <button onClick={() => { setShowAlertInput(false); setAlertInput(''); }}
+                  className="px-2 py-1.5 text-zinc-500 hover:text-zinc-300 text-xs transition-colors">
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowAlertInput(true)}
+                className="w-full py-2 rounded-lg bg-white/3 border border-white/8
+                           text-zinc-400 text-sm hover:bg-white/5 transition-colors text-left px-3"
+              >
+                🔔 Alertarme si {FUEL_LABELS[fuelType]} baja de…
+              </button>
+            )}
           </div>
 
           {/* Community prices */}
@@ -145,19 +269,12 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
 
           {/* Actions */}
           <div className="flex gap-2">
-            <button onClick={copyLink}
+            <button
+              onClick={handleShare}
               className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg
                          bg-white/5 hover:bg-white/8 border border-white/8 text-sm text-zinc-300 transition-colors">
-              🔗 Compartir
+              {shareCopied ? '✓ Copiado' : '🔗 Compartir'}
             </button>
-            <a href={`https://wa.me/?text=${encodeURIComponent(
-              `⛽ ${station.name}\n📍 ${station.address}, ${station.city}\n💰 Magna: ${formatMXN(p?.regular)}\n🔗 ${shareUrl}`
-            )}`} target="_blank" rel="noopener"
-              className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg
-                         bg-white/5 hover:bg-green-500/10 border border-white/8 text-sm text-zinc-300
-                         hover:border-green-500/30 hover:text-green-400 transition-colors">
-              💬 WhatsApp
-            </a>
             <a href="https://repeco.profeco.gob.mx/" target="_blank" rel="noopener"
               className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg
                          bg-white/5 hover:bg-orange-500/10 border border-white/8 text-sm text-zinc-300
