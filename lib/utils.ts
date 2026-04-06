@@ -57,7 +57,7 @@ export function computeStats(stations: Station[]): NationalStats {
 
   const regVals = vals('regular');
   const cheapest = regVals.length
-    ? withData.filter(s => s.prices?.regular != null)
+    ? withData.filter(s => s.prices?.regular != null && !s._isAnomaly)
         .sort((a, b) => (a.prices!.regular! - b.prices!.regular!))[0]
     : null;
 
@@ -115,7 +115,7 @@ export function getBrandColor(brand: string): string {
 }
 
 export const FUEL_LABELS: Record<string, string> = {
-  regular: 'Magna/Regular',
+  regular: 'Magna',
   premium: 'Premium',
   diesel: 'Diésel',
 };

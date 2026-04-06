@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { Station, AppFilters, ViewMode, FuelType } from '@/lib/types';
 import { filterStations, addDistances, computeStats, DEFAULT_FILTERS } from '@/lib/utils';
 import TopBar      from '@/components/TopBar';
@@ -28,17 +28,40 @@ const MapView = dynamic(() => import('@/components/MapView'), {
 const RouteOptimizer = dynamic(() => import('@/components/RouteOptimizer'), { ssr: false });
 
 export default function Home() {
-  const [allStations,  setAllStations]  = useState<Station[]>([]);
-  const [filters,      setFilters]      = useState<AppFilters>(DEFAULT_FILTERS);
-  const [viewMode,     setViewMode]     = useState<ViewMode>('map');
+  const [allStations,     setAllStations]     = useState<Station[]>([]);
+  const [filters,         setFilters]         = useState<AppFilters>(DEFAULT_FILTERS);
+  const [viewMode,        setViewMode]        = useState<ViewMode>('map');
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [isLoading,    setIsLoading]    = useState(true);
-  const [exportedAt,   setExportedAt]   = useState<string | null>(null);
-  const [showFilters,  setShowFilters]  = useState(false);
-  const [showReport,   setShowReport]   = useState(false);
-  const [searchQuery,  setSearchQuery]  = useState('');
-  const [hasShownHero, setHasShownHero] = useState(false);
+  const [userLocation,    setUserLocation]    = useState<{ lat: number; lng: number } | null>(null);
+  const [isLoading,       setIsLoading]       = useState(true);
+  const [exportedAt,      setExportedAt]      = useState<string | null>(null);
+  const [showFilters,     setShowFilters]     = useState(false);
+  const [showReport,      setShowReport]      = useState(false);
+  const [searchQuery,     setSearchQuery]     = useState('');
+  const [debouncedQuery,  setDebouncedQuery]  = useState('');
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // ── Search debounce ─────────────────────────────────────────────────────
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery), 200);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  // ── Keyboard shortcut: "/" focuses search ───────────────────────────────
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => {
+      if (e.key === '/' && document.activeElement?.tagName !== 'INPUT') {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+      if (e.key === 'Escape') {
+        setShowFilters(false);
+        setSelectedStation(null);
+      }
+    };
+    window.addEventListener('keydown', fn);
+    return () => window.removeEventListener('keydown', fn);
+  }, []);
 
   // ── Fetch stations ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -77,8 +100,8 @@ export default function Home() {
   // ── Filtered & searched stations ────────────────────────────────────────
   const displayed = useMemo(() => {
     let result = filterStations(allStations, filters);
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
+    if (debouncedQuery.trim()) {
+      const q = debouncedQuery.trim().toLowerCase();
       result = result.filter(s =>
         s.name.toLowerCase().includes(q) ||
         s.city.toLowerCase().includes(q) ||
@@ -87,15 +110,17 @@ export default function Home() {
       );
     }
     return result;
-  }, [allStations, filters, searchQuery]);
+  }, [allStations, filters, debouncedQuery]);
 
   const stats = useMemo(() => computeStats(allStations), [allStations]);
 
-  // ── Unique brands + states for filter UI ───────────────────────────────
-  const brands = useMemo(() =>
-    [...new Set(allStations.map(s => s.brand))].filter(Boolean).sort(),
-    [allStations]
-  );
+  // ── Unique brands + states for filter UI (exclude "OTRO" if it's 99%+ of data) ──
+  const brands = useMemo(() => {
+    const all = [...new Set(allStations.map(s => s.brand))].filter(Boolean).sort();
+    // Only show brands if there's more than just "OTRO"
+    return all.filter(b => b !== 'OTRO');
+  }, [allStations]);
+
   const states = useMemo(() =>
     [...new Set(allStations.map(s => s.state))].filter(Boolean).sort(),
     [allStations]
@@ -104,6 +129,13 @@ export default function Home() {
   // ── Fuel type shortcut from PriceStats ─────────────────────────────────
   const setFuelType = (ft: FuelType) =>
     setFilters(f => ({ ...f, fuelType: ft }));
+
+  const filtersActive =
+    filters.brands.length + filters.states.length +
+    (filters.maxDistanceKm != null ? 1 : 0) +
+    (filters.showAnomalies ? 1 : 0) +
+    (filters.priceMin != null ? 1 : 0) +
+    (filters.priceMax != null ? 1 : 0);
 
   // ── Loading skeleton ────────────────────────────────────────────────────
   if (isLoading) {
@@ -126,18 +158,14 @@ export default function Home() {
       <TopBar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        searchRef={searchRef}
         userLocation={userLocation}
         onRequestLocation={requestLocation}
         exportedAt={exportedAt}
         totalShowing={displayed.length}
         totalAll={allStations.length}
         onToggleFilters={() => setShowFilters(v => !v)}
-        filtersActive={
-          filters.brands.length + filters.states.length +
-          (filters.maxDistanceKm != null ? 1 : 0) +
-          (filters.showAnomalies ? 1 : 0) +
-          (filters.open24h ? 1 : 0)
-        }
+        filtersActive={filtersActive}
       />
 
       {/* ── National Stats Bar ──────────────────────────────────────── */}
@@ -159,18 +187,25 @@ export default function Home() {
       {/* ── Main Content ────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden relative">
 
-        {/* Filters sidebar (slide-in on mobile, fixed on desktop) */}
+        {/* Filters sidebar — backdrop on mobile */}
         {showFilters && (
-          <div className="absolute inset-0 z-50 md:relative md:inset-auto md:z-auto
-                          md:w-64 md:border-r md:border-white/5 md:flex-shrink-0">
-            <Filters
-              filters={filters}
-              onChange={setFilters}
-              brands={brands}
-              states={states}
-              onClose={() => setShowFilters(false)}
+          <>
+            {/* Mobile backdrop */}
+            <div
+              className="absolute inset-0 bg-black/50 z-40 md:hidden"
+              onClick={() => setShowFilters(false)}
             />
-          </div>
+            <div className="absolute inset-y-0 left-0 z-50 md:relative md:inset-auto md:z-auto
+                            md:w-64 md:border-r md:border-white/5 md:flex-shrink-0">
+              <Filters
+                filters={filters}
+                onChange={setFilters}
+                brands={brands}
+                states={states}
+                onClose={() => setShowFilters(false)}
+              />
+            </div>
+          </>
         )}
 
         {/* Main view */}
@@ -203,17 +238,22 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── Floating Report Button (only visible when station selected) ── */}
-      {selectedStation && !showReport && (
+      {/* ── Floating Report Button ───────────────────────────────────── */}
+      {!showReport && !selectedStation && (
         <button
-          onClick={() => setShowReport(true)}
+          onClick={() => {
+            // If no station selected, switch to list so user can pick one
+            if (viewMode === 'map') setViewMode('list');
+          }}
+          title="Selecciona una estación para reportar su precio"
           className="fixed bottom-6 right-4 z-40 flex items-center gap-2
-                     bg-emerald-500 hover:bg-emerald-400 active:scale-95
-                     text-black font-bold text-sm px-4 py-3 rounded-full
-                     shadow-[0_4px_24px_rgba(0,230,118,0.4)] transition-all"
+                     bg-emerald-500/20 hover:bg-emerald-500/30 active:scale-95
+                     border border-emerald-500/40 text-emerald-400
+                     font-semibold text-sm px-4 py-3 rounded-full
+                     shadow-lg transition-all"
           aria-label="Reportar precio"
         >
-          <span className="text-lg">+</span>
+          <span className="text-base">+</span>
           <span className="hidden sm:inline">Reportar precio</span>
         </button>
       )}
@@ -225,7 +265,7 @@ export default function Home() {
           fuelType={filters.fuelType}
           stats={stats}
           onClose={() => setSelectedStation(null)}
-          onReport={() => { setShowReport(true); }}
+          onReport={() => setShowReport(true)}
         />
       )}
 
@@ -238,7 +278,6 @@ export default function Home() {
           onSubmit={(report) => {
             // TODO: POST to /api/reports → write to Supabase
             console.log('Price report submitted:', report);
-            setShowReport(false);
           }}
         />
       )}

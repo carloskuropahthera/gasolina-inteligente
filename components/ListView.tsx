@@ -1,7 +1,7 @@
 'use client';
 import { useState, useMemo } from 'react';
 import type { Station, FuelType, SortField, SortDir } from '@/lib/types';
-import { formatMXN, formatDistance, getBrandColor } from '@/lib/utils';
+import { formatMXN, formatDistance, getBrandColor, FUEL_LABELS } from '@/lib/utils';
 
 interface Props {
   stations: Station[];
@@ -72,7 +72,7 @@ export default function ListView({ stations, fuelType, onSelectStation }: Props)
               <th className="text-left pl-4 py-2 font-medium">#</th>
               <th className="text-left pl-2 py-2 font-medium">Estación</th>
               <th className="text-left py-2 font-medium hidden md:table-cell">Ciudad</th>
-              <th className="text-right py-2 font-medium">Magna</th>
+              <th className="text-right py-2 font-medium">{FUEL_LABELS[fuelType]}</th>
               <th className="text-right py-2 font-medium hidden sm:table-cell">Premium</th>
               <th className="text-right py-2 font-medium hidden sm:table-cell">Diésel</th>
               <th className="text-right pr-4 py-2 font-medium">Dist.</th>

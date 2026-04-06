@@ -1,10 +1,11 @@
 'use client';
-import { useRef } from 'react';
+import type { RefObject } from 'react';
 import { timeAgo } from '@/lib/utils';
 
 interface Props {
   searchQuery: string;
   onSearchChange: (q: string) => void;
+  searchRef: RefObject<HTMLInputElement | null>;
   userLocation: { lat: number; lng: number } | null;
   onRequestLocation: () => void;
   exportedAt: string | null;
@@ -15,12 +16,11 @@ interface Props {
 }
 
 export default function TopBar({
-  searchQuery, onSearchChange,
+  searchQuery, onSearchChange, searchRef,
   userLocation, onRequestLocation,
   exportedAt,
   onToggleFilters, filtersActive,
 }: Props) {
-  const inputRef = useRef<HTMLInputElement>(null);
 
   return (
     <header className="flex items-center gap-2 px-3 py-2 border-b border-white/5 bg-[#0d0d1a] z-30 shrink-0">
@@ -37,11 +37,11 @@ export default function TopBar({
       <div className="flex-1 relative max-w-md">
         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">🔍</span>
         <input
-          ref={inputRef}
+          ref={searchRef}
           type="search"
           value={searchQuery}
           onChange={e => onSearchChange(e.target.value)}
-          placeholder="Ciudad, marca, estado…"
+          placeholder="Buscar… (presiona /)"
           className="w-full bg-white/5 border border-white/8 rounded-lg
                      pl-8 pr-3 py-1.5 text-sm text-zinc-200
                      placeholder:text-zinc-600 focus:outline-none

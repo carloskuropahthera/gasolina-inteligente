@@ -21,7 +21,7 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
 
   const p = station.prices;
   const brandColor = getBrandColor(station.brand);
-  const mapsUrl = `https://www.google.com/maps?q=${station.lat},${station.lng}`;
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${station.lat},${station.lng}`;
   const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}#station=${encodeURIComponent(station.id)}`;
 
   const vs = (price: number | null | undefined, avg: number) => {
@@ -123,23 +123,23 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
             </div>
           </div>
 
-          {/* Community prices placeholder */}
+          {/* Community prices */}
           <div className="rounded-xl border border-white/8 bg-white/2 p-4">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                Precio verificado por usuarios
+                Precio reportado por usuarios
               </h3>
               <span className="badge-pill bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px]">
-                Beta
+                Próximamente
               </span>
             </div>
-            <p className="text-xs text-zinc-600">
-              Sé el primero en reportar el precio actual de esta estación.
+            <p className="text-xs text-zinc-500 mb-3">
+              ¿Ves un precio diferente al de la CRE? Repórtalo y ayuda a la comunidad.
             </p>
             <button onClick={onReport}
-              className="mt-3 w-full py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20
+              className="w-full py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20
                          text-emerald-400 text-sm font-medium hover:bg-emerald-500/20 transition-colors">
-              + Reportar precio ahora
+              + Reportar precio · +10 pts
             </button>
           </div>
 

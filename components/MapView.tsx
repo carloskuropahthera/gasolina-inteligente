@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type L from 'leaflet';
 import type { Station, FuelType, NationalStats } from '@/lib/types';
 import { formatMXN, priceColor, getBrandColor, formatDistance, timeAgo } from '@/lib/utils';
@@ -15,6 +15,8 @@ interface Props {
   stats: NationalStats;
 }
 
+const CHUNK_SIZE = 400;
+
 export default function MapView({ stations, fuelType, userLocation, selectedStation, onSelectStation, stats }: Props) {
   const containerRef  = useRef<HTMLDivElement>(null);
   const mapRef        = useRef<L.Map | null>(null);
@@ -22,6 +24,11 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
   const userPinRef    = useRef<L.Marker | null>(null);
   const lastZoneRef   = useRef<'dot' | 'label' | null>(null);
   const LRef          = useRef<typeof L | null>(null);
+  const selectRef     = useRef(onSelectStation);
+  const [loading, setLoading] = useState(true);
+
+  // Keep selectRef current so popup onclick always has latest callback
+  selectRef.current = onSelectStation;
 
   // ── Init map once ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -36,6 +43,12 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
     ]).then(([Lmod]) => {
       const L = Lmod.default;
       LRef.current = L;
+
+      // Expose select callback for popup "Ver detalles" onclick
+      (window as typeof window & { _gi_select?: (id: string) => void })._gi_select = (id: string) => {
+        const station = stations.find(s => s.id === id);
+        if (station) selectRef.current(station);
+      };
 
       const map = L.map(containerRef.current!, {
         center: [23.6345, -102.5528],
@@ -58,6 +71,8 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
       map.addLayer(markers);
       markersRef.current = markers;
       mapRef.current = map;
+
+      map.whenReady(() => setLoading(false));
 
       // Price labels on zoom threshold crossing
       map.on('zoomend', () => {
@@ -92,22 +107,38 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
     const map = mapRef.current;
     if (!L || !markers || !map) return;
 
+    // Update _gi_select with fresh stations list
+    (window as typeof window & { _gi_select?: (id: string) => void })._gi_select = (id: string) => {
+      const station = stations.find(s => s.id === id);
+      if (station) selectRef.current(station);
+    };
+
     markers.clearLayers();
     lastZoneRef.current = null;
     const zoom = map.getZoom();
     const showLabels = zoom >= 13;
 
+    // Build all marker objects first (sync, fast)
     const layers: ReturnType<typeof L.marker>[] = [];
     for (const station of stations) {
       if (!station.lat || !station.lng) continue;
       const icon = makeIcon(L, station, fuelType, stats, showLabels);
       const m = L.marker([station.lat, station.lng], { icon, title: station.name });
       m.bindPopup(() => buildPopup(station, fuelType), { maxWidth: 260 });
-      m.on('click', () => onSelectStation(station));
+      m.on('click', () => selectRef.current(station));
       (m as unknown as { _giStation: Station })._giStation = station;
       layers.push(m);
     }
-    markers.addLayers(layers);
+
+    // Add in chunks with rAF to avoid blocking the main thread
+    let i = 0;
+    function addChunk() {
+      const end = Math.min(i + CHUNK_SIZE, layers.length);
+      markers!.addLayers(layers.slice(i, end));
+      i = end;
+      if (i < layers.length) requestAnimationFrame(addChunk);
+    }
+    addChunk();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stations, fuelType, stats]);
 
@@ -135,11 +166,30 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
   }, [selectedStation]);
 
   return (
-    <div
-      ref={containerRef}
-      className="flex-1 w-full"
-      style={{ minHeight: 0 }}
-    />
+    <div className="flex-1 w-full relative" style={{ minHeight: 0 }}>
+      <div ref={containerRef} className="absolute inset-0" />
+
+      {/* Loading overlay */}
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#0d0d1a] z-10">
+          <div className="text-center space-y-3">
+            <div className="text-4xl animate-pulse">🗺️</div>
+            <p className="text-zinc-400 text-sm">Cargando mapa…</p>
+          </div>
+        </div>
+      )}
+
+      {/* Empty state overlay */}
+      {!loading && stations.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#0d0d1a]/80 z-10 pointer-events-none">
+          <div className="text-center space-y-3 bg-[#13131f] border border-white/8 rounded-2xl p-8">
+            <span className="text-4xl">🔍</span>
+            <p className="text-zinc-300 font-semibold">Sin estaciones</p>
+            <p className="text-zinc-500 text-sm">Ajusta los filtros para ver resultados</p>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -170,23 +220,23 @@ function makeIcon(
 
 function buildPopup(station: Station, fuelType: FuelType): string {
   const p = station.prices;
-  const price = p?.[fuelType];
   const distStr = station.distanceKm != null ? `<div style="font-size:11px;color:#8888aa;margin-top:2px">📍 ${formatDistance(station.distanceKm)}</div>` : '';
   const freshStr = p?.updatedAt ? `<div style="font-size:10px;color:#666;margin-top:4px">CRE: ${timeAgo(p.updatedAt)}</div>` : '';
+  const locationStr = station.city ? `${esc(station.brand)} · ${esc(station.city)}` : esc(station.brand);
 
   return `
     <div style="min-width:180px">
       <div style="font-weight:700;font-size:13px;margin-bottom:4px">${esc(station.name)}</div>
-      <div style="font-size:11px;color:#8888aa">${esc(station.brand)} · ${esc(station.city)}</div>
+      <div style="font-size:11px;color:#8888aa">${locationStr}</div>
       ${distStr}
       <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-        ${priceChip('Regular', p?.regular)}
+        ${priceChip('Magna', p?.regular)}
         ${priceChip('Premium', p?.premium)}
         ${priceChip('Diésel', p?.diesel)}
       </div>
       ${freshStr}
-      <div style="margin-top:8px;font-size:11px;color:#00e676;cursor:pointer"
-           onclick="window._gi_select?.('${station.id}')">
+      <div style="margin-top:8px;font-size:11px;color:#00e676;cursor:pointer;font-weight:600"
+           onclick="window._gi_select?.('${esc(station.id)}')">
         Ver detalles →
       </div>
     </div>`;
@@ -200,5 +250,5 @@ function priceChip(label: string, val: number | null | undefined): string {
 }
 
 function esc(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
 }

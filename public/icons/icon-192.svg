@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="40" fill="#09090f"/>
+  <rect width="192" height="192" rx="40" fill="url(#g)"/>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00e676" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#00e676" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Fuel pump body -->
+  <rect x="54" y="72" width="60" height="76" rx="8" fill="#1a1a2e" stroke="#00e676" stroke-width="3"/>
+  <!-- Pump screen -->
+  <rect x="62" y="82" width="44" height="28" rx="4" fill="#00e676" opacity="0.15"/>
+  <!-- Price display -->
+  <text x="84" y="101" font-family="monospace" font-size="12" fill="#00e676" text-anchor="middle" font-weight="bold">$23.68</text>
+  <!-- Nozzle arm -->
+  <path d="M114 90 Q130 90 130 105 L130 125" stroke="#00e676" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- Nozzle -->
+  <rect x="123" y="120" width="14" height="22" rx="4" fill="#00e676"/>
+  <!-- Base -->
+  <rect x="50" y="144" width="68" height="8" rx="4" fill="#00e676" opacity="0.5"/>
+  <!-- Fuel drops -->
+  <circle cx="40" cy="60" r="6" fill="#00e676" opacity="0.6"/>
+  <circle cx="156" cy="80" r="4" fill="#00e676" opacity="0.4"/>
+</svg>

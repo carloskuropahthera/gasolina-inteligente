@@ -87,22 +87,21 @@ export default function Filters({ filters, onChange, brands, states, onClose }: 
             Extras
           </label>
           <div className="mt-2 space-y-2">
-            {[
-              { key: 'showAnomalies', label: '⚠️ Solo anomalías' },
-              { key: 'open24h',       label: '🕐 Abierto 24h'   },
-            ].map(opt => (
-              <label key={opt.key} className="flex items-center gap-2 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={!!filters[opt.key as keyof AppFilters]}
-                  onChange={e => set({ [opt.key]: e.target.checked })}
-                  className="w-4 h-4 rounded border-white/20 bg-white/5 accent-emerald-500"
-                />
-                <span className="text-zinc-300 group-hover:text-zinc-100 transition-colors">
-                  {opt.label}
-                </span>
-              </label>
-            ))}
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={!!filters.showAnomalies}
+                onChange={e => set({ showAnomalies: e.target.checked })}
+                className="w-4 h-4 rounded border-white/20 bg-white/5 accent-emerald-500"
+              />
+              <span className="text-zinc-300 group-hover:text-zinc-100 transition-colors">
+                ⚠️ Solo anomalías
+              </span>
+            </label>
+            <label className="flex items-center gap-2 opacity-40 cursor-not-allowed">
+              <input type="checkbox" disabled className="w-4 h-4 rounded border-white/20 bg-white/5" />
+              <span className="text-zinc-500">🕐 Abierto 24h <span className="text-[10px] text-zinc-600">(próximamente)</span></span>
+            </label>
           </div>
         </section>
 
