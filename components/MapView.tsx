@@ -129,7 +129,8 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Re-render markers when stations/fuelType/stats change ─────────────
+  // ── Rebuild markers when the station list changes ────────────────────
+  // (fuel type changes are handled cheaply in the effect below)
   useEffect(() => {
     const L = LRef.current;
     const markers = markersRef.current;
@@ -146,20 +147,20 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
     lastZoneRef.current = null;
     const zoom = map.getZoom();
     const showLabels = zoom >= 13;
+    const ft = fuelTypeRef.current;
+    const st = statsRef.current;
 
     const layers: ReturnType<typeof L.marker>[] = [];
     for (const station of stations) {
       if (!station.lat || !station.lng) continue;
-      const icon = makeIcon(L, station, fuelType, stats, showLabels);
+      const icon = makeIcon(L, station, ft, st, showLabels);
       const m = L.marker([station.lat, station.lng], { icon, title: station.name });
-      m.bindPopup(() => buildPopup(station, fuelType), { maxWidth: 260 });
+      m.bindPopup(() => buildPopup(station, ft), { maxWidth: 260 });
       m.on('click', () => selectRef.current(station));
       (m as unknown as { _giStation: Station })._giStation = station;
       layers.push(m);
     }
 
-    // Refresh cluster icons to pick up new fuelType (after clearLayers/addLayers)
-    // The iconCreateFunction reads fuelTypeRef dynamically so refreshClusters does it
     let i = 0;
     function addChunk() {
       const end = Math.min(i + CHUNK_SIZE, layers.length);
@@ -168,13 +169,36 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
       if (i < layers.length) {
         requestAnimationFrame(addChunk);
       } else {
-        // After all markers added, refresh cluster icons
         (markers as unknown as { refreshClusters?: () => void }).refreshClusters?.();
       }
     }
     addChunk();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stations, fuelType, stats]);
+  }, [stations]);
+
+  // ── Update icons when fuel type or stats change (no full rebuild) ─────
+  useEffect(() => {
+    const L = LRef.current;
+    const markers = markersRef.current;
+    const map = mapRef.current;
+    if (!L || !markers || !map) return;
+
+    // Force cluster icon recreation: remove + re-add triggers iconCreateFunction for all clusters
+    map.removeLayer(markers);
+    map.addLayer(markers);
+
+    // Also update individual marker dots/pills in the current viewport
+    const zoom = map.getZoom();
+    const showLabels = zoom >= 13;
+    const bounds = map.getBounds();
+    markers.eachLayer((layer: unknown) => {
+      const m = layer as { _giStation?: Station; setIcon?: (icon: unknown) => void; getLatLng?: () => { lat: number; lng: number } };
+      if (!m._giStation || !m.setIcon || !m.getLatLng) return;
+      if (!bounds.contains(m.getLatLng() as Parameters<typeof bounds.contains>[0])) return;
+      m.setIcon(makeIcon(L, m._giStation, fuelType, stats, showLabels));
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fuelType, stats]);
 
   // ── User pin ─────────────────────────────────────────────────────────
   useEffect(() => {
