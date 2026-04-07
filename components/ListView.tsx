@@ -1,7 +1,7 @@
 'use client';
 import { useState, useMemo, useCallback } from 'react';
 import type { Station, FuelType, SortField, SortDir, StationPrices } from '@/lib/types';
-import { formatMXN, formatDistance, getBrandColor, FUEL_LABELS, priceTrend } from '@/lib/utils';
+import { formatMXN, formatDistance, getBrandColor, FUEL_LABELS, priceTrend, timeAgo } from '@/lib/utils';
 
 interface Props {
   stations: Station[];
@@ -11,6 +11,9 @@ interface Props {
   favorites?: Set<string>;
   onToggleFavorite?: (id: string) => void;
   prevPrices?: Record<string, StationPrices> | null;
+  compareIds?: Set<string>;
+  onToggleCompare?: (id: string) => void;
+  onCompare?: () => void;
 }
 
 const PAGE = 50;
@@ -19,6 +22,7 @@ export default function ListView({
   stations, fuelType, onSelectStation,
   favorites = new Set(), onToggleFavorite,
   prevPrices,
+  compareIds = new Set(), onToggleCompare, onCompare,
 }: Props) {
   const [sortField, setSortField] = useState<SortField>('price');
   const [sortDir,   setSortDir]   = useState<SortDir>('asc');
@@ -77,6 +81,8 @@ export default function ListView({
     const isFav = favorites.has(s.id);
     const trend = priceTrend(price, prevPrices?.[s.id]?.[fuelType]);
     const isFocused = sliceIdx != null && sliceIdx === focusedIdx;
+    const isComparing = compareIds.has(s.id);
+    const compareDisabled = !isComparing && compareIds.size >= 3;
     return (
       <tr
         key={s.id}
@@ -108,10 +114,24 @@ export default function ListView({
                 {isFav ? '★' : '☆'}
               </button>
             )}
+            {onToggleCompare && (
+              <input
+                type="checkbox"
+                checked={isComparing}
+                disabled={compareDisabled}
+                onClick={e => { e.stopPropagation(); onToggleCompare(s.id); }}
+                onChange={() => {}}
+                title="Comparar"
+                className="w-3.5 h-3.5 shrink-0 accent-emerald-500 disabled:opacity-30 cursor-pointer"
+              />
+            )}
           </div>
         </td>
         <td className="py-2.5 text-zinc-400 text-xs hidden md:table-cell">
           {s.city}<span className="text-zinc-600">{s.state ? `, ${s.state}` : ''}</span>
+          {s.prices?.updatedAt && (
+            <span className="ml-1 text-zinc-700 text-[9px]">{timeAgo(s.prices.updatedAt)}</span>
+          )}
         </td>
         <td className={`py-2.5 text-right font-bold tabular-nums
           ${price != null ? 'text-emerald-300' : 'text-zinc-600'}`}>
@@ -161,7 +181,7 @@ export default function ListView({
               <th className="text-left pl-4 py-2 font-medium">#</th>
               <th className="text-left pl-2 py-2 font-medium">Estación</th>
               <th className="text-left py-2 font-medium hidden md:table-cell">Ciudad</th>
-              <th className="text-right py-2 font-medium">{FUEL_LABELS[fuelType]}</th>
+              <th className="text-right py-2 font-medium" title="▲ subió · ▼ bajó · → sin cambio (vs. última carga)">{FUEL_LABELS[fuelType]}</th>
               <th className="text-right py-2 font-medium hidden sm:table-cell">Premium</th>
               <th className="text-right py-2 font-medium hidden sm:table-cell">Diésel</th>
               <th className="text-right pr-4 py-2 font-medium">Dist.</th>
@@ -199,6 +219,18 @@ export default function ListView({
           </div>
         )}
       </div>
+
+      {/* Compare sticky button (#18) */}
+      {compareIds.size >= 2 && onCompare && (
+        <div className="flex items-center justify-center py-2 border-t border-white/5 bg-[#0d0d1a] shrink-0">
+          <button
+            onClick={onCompare}
+            className="px-5 py-2 rounded-xl bg-emerald-500 text-black font-bold text-sm hover:bg-emerald-400 transition-colors"
+          >
+            Comparar ({compareIds.size})
+          </button>
+        </div>
+      )}
 
       {/* Pagination */}
       {totalPages > 1 && (

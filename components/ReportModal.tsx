@@ -1,8 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { Station, FuelType } from '@/lib/types';
 import { formatMXN, FUEL_LABELS } from '@/lib/utils';
-import { useEffect } from 'react';
+import { useFocusTrap } from '@/lib/useFocusTrap';
+import { useSwipeToDismiss } from '@/lib/useSwipeToDismiss';
 
 interface Props {
   station: Station;
@@ -31,6 +32,9 @@ export default function ReportModal({ station, fuelType, onClose, onSubmit }: Pr
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submitted, setSubmitted]       = useState(false);
   const [error, setError]               = useState<string | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, true);
+  const { dragY, isDragging } = useSwipeToDismiss(panelRef, onClose);
 
   // Close on Escape
   useEffect(() => {
@@ -142,8 +146,15 @@ export default function ReportModal({ station, fuelType, onClose, onSubmit }: Pr
     >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
-      <div className="relative w-full max-w-md bg-[#13131f] rounded-t-2xl sm:rounded-2xl
-                      border border-white/8 shadow-2xl slide-up max-h-[90vh] flex flex-col">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Reportar precio"
+        style={{ transform: `translateY(${dragY}px)`, transition: isDragging ? 'none' : 'transform 0.2s' }}
+        className="relative w-full max-w-md bg-[#13131f] rounded-t-2xl sm:rounded-2xl
+                      border border-white/8 shadow-2xl slide-up max-h-[90vh] flex flex-col"
+      >
 
         {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">

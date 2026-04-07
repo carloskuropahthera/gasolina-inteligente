@@ -8,6 +8,9 @@ import { useStationsCache } from '@/lib/useStationsCache';
 import { useFavorites } from '@/lib/useFavorites';
 import { usePriceAlerts } from '@/lib/usePriceAlerts';
 import { useReports } from '@/lib/useReports';
+import { useOnlineStatus } from '@/lib/useOnlineStatus';
+import { useUserStats } from '@/lib/useUserStats';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import TopBar      from '@/components/TopBar';
 import PriceStats  from '@/components/PriceStats';
 import ViewToggle  from '@/components/ViewToggle';
@@ -15,6 +18,8 @@ import Filters     from '@/components/Filters';
 import ListView    from '@/components/ListView';
 import StationModal from '@/components/StationModal';
 import ReportModal from '@/components/ReportModal';
+import FilterChips from '@/components/FilterChips';
+import CompareModal from '@/components/CompareModal';
 
 // Leaflet must be client-only — no SSR
 const MapView = dynamic(() => import('@/components/MapView'), {
@@ -36,6 +41,8 @@ export default function Home() {
   const { favorites, toggle: toggleFav } = useFavorites();
   const { alerts } = usePriceAlerts();
   const { addReport } = useReports();
+  const isOnline = useOnlineStatus();
+  const { stats: userStats, addPoints } = useUserStats();
 
   const [allStations,     setAllStations]     = useState<Station[]>([]);
   const [filters,         setFilters]         = useState<AppFilters>(DEFAULT_FILTERS);
@@ -50,6 +57,10 @@ export default function Home() {
   const [isRefreshing,    setIsRefreshing]    = useState(false);
   const [routeCoords,     setRouteCoords]     = useState<[number, number][] | null>(null);
   const [triggeredAlerts, setTriggeredAlerts] = useState<typeof alerts>([]);
+  const [recentSearches,  setRecentSearches]  = useState<string[]>([]);
+  const [pointsToast,     setPointsToast]     = useState<string | null>(null);
+  const [compareIds,      setCompareIds]      = useState<Set<string>>(new Set());
+  const [showCompare,     setShowCompare]     = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Sync IndexedDB cache results into allStations
@@ -102,6 +113,28 @@ export default function Home() {
     const t = setTimeout(() => setDebouncedQuery(searchQuery), 200);
     return () => clearTimeout(t);
   }, [searchQuery]);
+
+  // ── Load recent searches from localStorage (#5) ────────────────────────
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('gi_recent_searches') ?? '[]') as string[];
+      setRecentSearches(saved.slice(0, 5));
+    } catch { /* ignore */ }
+  }, []);
+
+  // ── Save recent searches when a query yields results (#5) ─────────────
+  useEffect(() => {
+    if (!debouncedQuery.trim() || displayed.length === 0) return;
+    const t = setTimeout(() => {
+      setRecentSearches(prev => {
+        const next = [debouncedQuery, ...prev.filter(q => q !== debouncedQuery)].slice(0, 5);
+        try { localStorage.setItem('gi_recent_searches', JSON.stringify(next)); } catch { /* ignore */ }
+        return next;
+      });
+    }, 1000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQuery]);
 
   // ── Keyboard shortcut: "/" focuses search ──────────────────────────────
   useEffect(() => {
@@ -170,6 +203,27 @@ export default function Home() {
   }, [allStations, filters, debouncedQuery]);
 
   const stats = useMemo(() => computeStats(allStations), [allStations]);
+
+  // ── Nearby cheaper alternatives for StationModal (#9) ────────────────
+  const nearbyAlternatives = useMemo(() => {
+    if (!selectedStation) return [];
+    const ft = filters.fuelType;
+    const selectedPrice = selectedStation.prices?.[ft];
+    if (selectedPrice == null) return [];
+    return allStations
+      .filter(s =>
+        s.id !== selectedStation.id &&
+        s.prices?.[ft] != null &&
+        s.prices[ft]! < selectedPrice &&
+        !s._isAnomaly &&
+        s.lat && s.lng &&
+        Math.sqrt(
+          (s.lat - selectedStation.lat) ** 2 + (s.lng - selectedStation.lng) ** 2
+        ) < 0.028 // ~3km in degrees
+      )
+      .sort((a, b) => a.prices![ft]! - b.prices![ft]!)
+      .slice(0, 3);
+  }, [selectedStation, allStations, filters.fuelType]);
 
   // ── Cheapest near user (≤5km) after GPS grant (#14) ───────────────────
   const nearestCheapest = useMemo(() => {
@@ -252,6 +306,9 @@ export default function Home() {
         filtersActive={filtersActive}
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
+        recentSearches={recentSearches}
+        onSelectRecent={setSearchQuery}
+        pointsBadge={userStats.points > 0 ? `⛽ ${userStats.points} pts` : null}
       />
 
       {/* ── National Stats Bar ──────────────────────────────────────── */}
@@ -264,6 +321,9 @@ export default function Home() {
         onSelectStation={setSelectedStation}
       />
 
+      {/* ── Active filter chips (#3) ─────────────────────────────────── */}
+      <FilterChips filters={filters} onChange={setFilters} />
+
       {/* ── View Toggle ─────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/5 bg-[#0d0d1a]">
         <ViewToggle current={viewMode} onChange={setViewMode} />
@@ -271,6 +331,13 @@ export default function Home() {
           {displayed.length.toLocaleString('es-MX')} estaciones
         </span>
       </div>
+
+      {/* ── Offline banner (#11) ─────────────────────────────────────── */}
+      {!isOnline && (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border-b border-amber-500/20 shrink-0">
+          <span className="text-amber-400 text-xs">📴 Sin conexión — mostrando datos en caché</span>
+        </div>
+      )}
 
       {/* ── Stale cache banner ───────────────────────────────────────── */}
       {cacheAgeMs != null && cacheAgeMs > 4 * 60 * 60 * 1000 && (
@@ -325,34 +392,47 @@ export default function Home() {
         {/* Main view */}
         <div className="flex-1 overflow-hidden flex flex-col">
           {viewMode === 'map' && (
-            <MapView
-              stations={displayed}
-              fuelType={filters.fuelType}
-              userLocation={userLocation}
-              selectedStation={selectedStation}
-              onSelectStation={setSelectedStation}
-              stats={stats}
-              routeCoords={routeCoords}
-            />
+            <ErrorBoundary>
+              <MapView
+                stations={displayed}
+                fuelType={filters.fuelType}
+                userLocation={userLocation}
+                selectedStation={selectedStation}
+                onSelectStation={setSelectedStation}
+                stats={stats}
+                routeCoords={routeCoords}
+              />
+            </ErrorBoundary>
           )}
           {viewMode === 'list' && (
-            <ListView
-              stations={displayed}
-              fuelType={filters.fuelType}
-              userLocation={userLocation}
-              onSelectStation={setSelectedStation}
-              favorites={favorites}
-              onToggleFavorite={toggleFav}
-              prevPrices={prevPrices}
-            />
+            <ErrorBoundary>
+              <ListView
+                stations={displayed}
+                fuelType={filters.fuelType}
+                userLocation={userLocation}
+                onSelectStation={setSelectedStation}
+                favorites={favorites}
+                onToggleFavorite={toggleFav}
+                prevPrices={prevPrices}
+                compareIds={compareIds}
+                onToggleCompare={id => setCompareIds(prev => {
+                  const next = new Set(prev);
+                  if (next.has(id)) next.delete(id); else if (next.size < 3) next.add(id);
+                  return next;
+                })}
+                onCompare={() => setShowCompare(true)}
+              />
+            </ErrorBoundary>
           )}
           {viewMode === 'route' && (
-            <RouteOptimizer
-              stations={displayed}
-              fuelType={filters.fuelType}
-              onSelectStation={setSelectedStation}
-              onRouteComputed={coords => { setRouteCoords(coords); setViewMode('map'); }}
-            />
+            <ErrorBoundary>
+              <RouteOptimizer
+                stations={displayed}
+                fuelType={filters.fuelType}
+                onSelectStation={setSelectedStation}
+                onRouteComputed={coords => { setRouteCoords(coords); setViewMode('map'); }}
+              />
+            </ErrorBoundary>
           )}
         </div>
       </div>
@@ -385,7 +465,27 @@ export default function Home() {
           onClose={() => setSelectedStation(null)}
           onReport={() => setShowReport(true)}
           prevPrices={prevPrices}
+          nearbyAlternatives={nearbyAlternatives}
+          onSelectStation={setSelectedStation}
         />
+      )}
+
+      {/* ── Compare Modal (#18) ─────────────────────────────────────── */}
+      {showCompare && compareIds.size >= 2 && (
+        <CompareModal
+          stations={allStations.filter(s => compareIds.has(s.id))}
+          fuelType={filters.fuelType}
+          onClose={() => { setShowCompare(false); setCompareIds(new Set()); }}
+          onSelectStation={s => { setSelectedStation(s); setShowCompare(false); setCompareIds(new Set()); }}
+        />
+      )}
+
+      {/* ── Points toast (#19) ──────────────────────────────────────── */}
+      {pointsToast && (
+        <div className="fixed bottom-20 right-4 z-50 slide-up px-4 py-2 rounded-xl
+                        bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-semibold text-sm shadow-lg">
+          {pointsToast}
+        </div>
       )}
 
       {/* ── Report Price Modal ───────────────────────────────────────── */}
@@ -404,6 +504,9 @@ export default function Home() {
               photoUrl: report.photo,
               reportedAt: new Date().toISOString(),
             });
+            addPoints(10);
+            setPointsToast('+10 pts 🎉');
+            setTimeout(() => setPointsToast(null), 2500);
             setShowReport(false);
           }}
         />

@@ -1,10 +1,14 @@
 'use client';
 import type { Station, FuelType, NationalStats, StationPrices } from '@/lib/types';
 import { formatMXN, formatDistance, getBrandColor, timeAgo, FUEL_LABELS, priceTrend } from '@/lib/utils';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { getPriceHistory } from '@/lib/useStationsCache';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFavorites } from '@/lib/useFavorites';
 import { usePriceAlerts } from '@/lib/usePriceAlerts';
 import { useReports } from '@/lib/useReports';
+import { useFocusTrap } from '@/lib/useFocusTrap';
+import { useSwipeToDismiss } from '@/lib/useSwipeToDismiss';
 
 interface Props {
   station: Station;
@@ -13,17 +17,23 @@ interface Props {
   onClose: () => void;
   onReport: () => void;
   prevPrices?: Record<string, StationPrices> | null;
+  nearbyAlternatives?: Station[];
+  onSelectStation?: (s: Station) => void;
 }
 
 const TANK_LITERS = 50;
 
-export default function StationModal({ station, fuelType, stats, onClose, onReport, prevPrices }: Props) {
+export default function StationModal({ station, fuelType, stats, onClose, onReport, prevPrices, nearbyAlternatives, onSelectStation }: Props) {
   const { isFavorite, toggle: toggleFav } = useFavorites();
   const { getAlert, addAlert, removeAlert } = usePriceAlerts();
   const { getStationReports } = useReports();
   const [alertInput, setAlertInput] = useState('');
   const [showAlertInput, setShowAlertInput] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [priceHistory, setPriceHistory] = useState<{ date: string; price: number }[]>([]);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, true);
+  const { dragY, isDragging } = useSwipeToDismiss(panelRef, onClose);
 
   // Close on Escape
   useEffect(() => {
@@ -31,6 +41,11 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
     window.addEventListener('keydown', fn);
     return () => window.removeEventListener('keydown', fn);
   }, [onClose]);
+
+  // Load price history for this station (#1)
+  useEffect(() => {
+    getPriceHistory(station.id, fuelType).then(setPriceHistory).catch(() => {});
+  }, [station.id, fuelType]);
 
   const p = station.prices;
   const brandColor = getBrandColor(station.brand);
@@ -100,8 +115,15 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
       {/* Panel */}
-      <div className="relative w-full max-w-lg bg-[#13131f] rounded-t-2xl sm:rounded-2xl
-                      border border-white/8 shadow-2xl slide-up max-h-[90vh] flex flex-col">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+        style={{ transform: `translateY(${dragY}px)`, transition: isDragging ? 'none' : 'transform 0.2s' }}
+        className="relative w-full max-w-lg bg-[#13131f] rounded-t-2xl sm:rounded-2xl
+                      border border-white/8 shadow-2xl slide-up max-h-[90vh] flex flex-col"
+      >
 
         {/* Drag handle (mobile) */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">
@@ -112,7 +134,7 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
         <div className="flex items-start gap-3 px-5 pt-4 pb-3 border-b border-white/8 shrink-0"
              style={{ borderLeftColor: brandColor, borderLeftWidth: 4 }}>
           <div className="flex-1 min-w-0">
-            <h2 className="font-bold text-lg text-zinc-100 leading-tight">{station.name}</h2>
+            <h2 id="modal-title" className="font-bold text-lg text-zinc-100 leading-tight">{station.name}</h2>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="text-xs px-2 py-0.5 rounded-full font-semibold text-white"
                     style={{ background: brandColor }}>
@@ -159,8 +181,12 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
 
           {/* Prices */}
           <div>
-            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
+            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
               Precios oficiales CRE
+              <span
+                className="text-zinc-600 cursor-help text-[11px] font-normal normal-case tracking-normal"
+                title="▲ subió · ▼ bajó · → sin cambio (vs. última carga)"
+              >ℹ</span>
             </h3>
             <div className="grid grid-cols-3 gap-3">
               {(['regular','premium','diesel'] as FuelType[]).map(ft => {
@@ -179,8 +205,16 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
                       {formatMXN(price)}
                     </div>
                     {trend && (
-                      <div className={`text-[10px] mt-0.5 font-semibold
-                        ${trend === '▲' ? 'text-orange-400' : trend === '▼' ? 'text-blue-400' : 'text-zinc-600'}`}>
+                      <div
+                        title={(() => {
+                          const prevP = prev?.[ft];
+                          if (price == null || prevP == null) return undefined;
+                          const delta = price - prevP;
+                          if (Math.abs(delta) < 0.05) return 'Sin cambio vs. última carga';
+                          return `${delta > 0 ? 'Subió' : 'Bajó'} $${Math.abs(delta).toFixed(2)} vs. última carga`;
+                        })()}
+                        className={`text-[10px] mt-0.5 font-semibold cursor-help
+                          ${trend === '▲' ? 'text-orange-400' : trend === '▼' ? 'text-blue-400' : 'text-zinc-600'}`}>
                         {trend}
                       </div>
                     )}
@@ -200,6 +234,52 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
             </div>
           </div>
 
+          {/* Price history chart (#1) */}
+          <div className="rounded-xl border border-white/8 bg-white/2 p-4">
+            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
+              Historial de precio — {FUEL_LABELS[fuelType]}
+            </h3>
+            {priceHistory.length >= 2 ? (
+              <ResponsiveContainer width="100%" height={80}>
+                <AreaChart data={priceHistory} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                  <defs>
+                    <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#10b981" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 9, fill: '#71717a' }}
+                    tickFormatter={d => d.slice(5)} // MM-DD
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis domain={['auto', 'auto']} hide />
+                  <Tooltip
+                    contentStyle={{ background: '#13131f', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 11 }}
+                    labelStyle={{ color: '#a1a1aa' }}
+                    itemStyle={{ color: '#10b981' }}
+                    formatter={(v: number) => [`$${v.toFixed(2)}`, FUEL_LABELS[fuelType]]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="price"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    fill="url(#priceGrad)"
+                    dot={{ r: 3, fill: '#10b981', strokeWidth: 0 }}
+                    activeDot={{ r: 4, fill: '#10b981' }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-xs text-zinc-600">
+                Sin historial aún — regresa mañana para ver la evolución de precios.
+              </p>
+            )}
+          </div>
+
           {/* Amenities */}
           <div className="rounded-xl border border-white/8 bg-white/2 p-4">
             <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Servicios</h3>
@@ -217,6 +297,35 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
               <p className="text-xs text-zinc-600">Datos de servicios no disponibles aún</p>
             )}
           </div>
+
+          {/* Nearby cheaper alternatives (#9) */}
+          {nearbyAlternatives && nearbyAlternatives.length > 0 && (
+            <div className="rounded-xl border border-white/8 bg-white/2 p-4">
+              <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
+                Alternativas más baratas cerca
+              </h3>
+              <div className="space-y-2">
+                {nearbyAlternatives.map(s => {
+                  const alt = s.prices?.[fuelType];
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => { onSelectStation?.(s); }}
+                      className="w-full flex items-center gap-3 text-left hover:bg-white/3 rounded-lg p-1.5 transition-colors"
+                    >
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: getBrandColor(s.brand) }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-zinc-300 truncate">{s.name}</p>
+                        <p className="text-[10px] text-zinc-600">{s.brand} · {formatDistance(s.distanceKm)}</p>
+                      </div>
+                      <span className="text-sm font-bold text-emerald-300 tabular-nums shrink-0">{formatMXN(alt)}</span>
+                      <span className="text-zinc-600 text-xs">→</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Price alert */}
           <div className="rounded-xl border border-white/8 bg-white/2 p-4">

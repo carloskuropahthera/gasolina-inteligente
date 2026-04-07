@@ -1,7 +1,24 @@
 import { NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import path from 'path';
-import type { Station } from '@/lib/types';
+import type { Station, FuelType } from '@/lib/types';
+
+function detectAnomalies(stations: Station[], fuelKey: FuelType): void {
+  const prices = stations
+    .filter(s => s.prices?.[fuelKey] != null)
+    .map(s => s.prices![fuelKey]!);
+  if (prices.length <= 10) return;
+  const mean     = prices.reduce((a, b) => a + b, 0) / prices.length;
+  const variance = prices.reduce((a, b) => a + (b - mean) ** 2, 0) / prices.length;
+  const stddev   = Math.sqrt(variance);
+  const threshold = 3 * stddev;
+  for (const s of stations) {
+    const price = s.prices?.[fuelKey];
+    if (price != null && Math.abs(price - mean) > threshold) {
+      s._isAnomaly = true;
+    }
+  }
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // DATA SOURCE
@@ -57,19 +74,10 @@ export async function GET() {
       .map(normalizeStation)
       .filter(s => s.id && s.lat && s.lng);
 
-    // Anomaly detection: flag stations where regular price deviates > 3 stddev from mean
-    const regularPrices = stations.filter(s => s.prices?.regular != null).map(s => s.prices!.regular!);
-    if (regularPrices.length > 10) {
-      const mean = regularPrices.reduce((a, b) => a + b, 0) / regularPrices.length;
-      const variance = regularPrices.reduce((a, b) => a + (b - mean) ** 2, 0) / regularPrices.length;
-      const stddev = Math.sqrt(variance);
-      const threshold = 3 * stddev;
-      for (const s of stations) {
-        if (s.prices?.regular != null && Math.abs(s.prices.regular - mean) > threshold) {
-          s._isAnomaly = true;
-        }
-      }
-    }
+    // Anomaly detection: flag stations where any fuel price deviates > 3 stddev from mean
+    detectAnomalies(stations, 'regular');
+    detectAnomalies(stations, 'premium');
+    detectAnomalies(stations, 'diesel');
 
     return NextResponse.json(
       {

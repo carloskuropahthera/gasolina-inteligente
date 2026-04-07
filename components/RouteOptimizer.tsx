@@ -16,14 +16,16 @@ interface RouteStation extends Station {
 
 interface RouteResult {
   stations: RouteStation[];
+  allStations: RouteStation[];   // untruncated list
   totalDistKm: number;
   estimatedSavingsMXN: number;
 }
 
-const OSRM = 'https://router.project-osrm.org/route/v1/driving';
+const OSRM      = 'https://router.project-osrm.org/route/v1/driving';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
-const SAMPLE_STEP = 8; // every 8th coord
-const SNAP_KM = 5;     // km around route to search stations
+const SAMPLE_STEP = 8;
+
+const SNAP_OPTIONS = [2, 5, 10, 20] as const;
 const TOP_N = 5;
 
 async function geocode(query: string): Promise<{ lat: number; lng: number } | null> {
@@ -50,6 +52,7 @@ function stationsAlongRoute(
   coords: Array<[number, number]>,
   stations: Station[],
   fuelType: FuelType,
+  snapKm: number,
 ): RouteStation[] {
   const sampled = coords.filter((_, i) => i % SAMPLE_STEP === 0);
   const seen = new Set<string>();
@@ -62,23 +65,24 @@ function stationsAlongRoute(
       const d = haversine(lat, lng, s.lat, s.lng);
       if (d < minDist) minDist = d;
     }
-    if (minDist <= SNAP_KM && !seen.has(s.id)) {
+    if (minDist <= snapKm && !seen.has(s.id)) {
       seen.add(s.id);
       result.push({ ...s, snapDistKm: minDist });
     }
   }
 
-  return result
-    .sort((a, b) => (a.prices![fuelType]! - b.prices![fuelType]!))
-    .slice(0, TOP_N);
+  return result.sort((a, b) => (a.prices![fuelType]! - b.prices![fuelType]!));
 }
 
 export default function RouteOptimizer({ stations, fuelType, onSelectStation, onRouteComputed }: Props) {
-  const [origin, setOrigin]         = useState('');
-  const [destination, setDest]      = useState('');
-  const [loading, setLoading]       = useState(false);
-  const [error, setError]           = useState<string | null>(null);
-  const [result, setResult]         = useState<RouteResult | null>(null);
+  const [origin,      setOrigin]      = useState('');
+  const [destination, setDest]        = useState('');
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState<string | null>(null);
+  const [result,      setResult]      = useState<RouteResult | null>(null);
+  const [snapKm,      setSnapKm]      = useState<number>(5);
+  const [showSnapOpts,setShowSnap]    = useState(false);
+  const [showAll,     setShowAll]     = useState(false);
 
   const handleSearch = async () => {
     if (!origin.trim() || !destination.trim()) {
@@ -88,6 +92,7 @@ export default function RouteOptimizer({ stations, fuelType, onSelectStation, on
     setLoading(true);
     setError(null);
     setResult(null);
+    setShowAll(false);
 
     try {
       const [fromCoord, toCoord] = await Promise.all([
@@ -102,22 +107,29 @@ export default function RouteOptimizer({ stations, fuelType, onSelectStation, on
       const coords = route.geometry.coordinates as Array<[number, number]>;
       const totalDistKm = route.distance / 1000;
 
-      const along = stationsAlongRoute(coords, stations, fuelType);
+      const allAlong = stationsAlongRoute(coords, stations, fuelType, snapKm);
       onRouteComputed?.(coords);
 
-      // Estimate savings: cheapest on route vs national avg (simple proxy)
-      const prices = along.map(s => s.prices![fuelType]!);
+      const prices = allAlong.map(s => s.prices![fuelType]!);
       const cheapestPrice = prices.length ? Math.min(...prices) : 0;
-      // 50L tank fill savings vs avg
       const avgPrice = prices.length ? prices.reduce((a, b) => a + b) / prices.length : cheapestPrice;
       const estimatedSavingsMXN = prices.length >= 2 ? (avgPrice - cheapestPrice) * 50 : 0;
 
-      setResult({ stations: along, totalDistKm, estimatedSavingsMXN });
+      setResult({ stations: allAlong.slice(0, TOP_N), allStations: allAlong, totalDistKm, estimatedSavingsMXN });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetResults = () => {
+    setResult(null);
+    setOrigin('');
+    setDest('');
+    setError(null);
+    setShowAll(false);
+    onRouteComputed?.([]);
   };
 
   const useCurrentLocation = () => {
@@ -127,11 +139,25 @@ export default function RouteOptimizer({ stations, fuelType, onSelectStation, on
     });
   };
 
+  const displayedStations = result
+    ? (showAll ? result.allStations : result.stations)
+    : [];
+
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
       {/* Inputs */}
       <div className="rounded-2xl border border-white/8 bg-[#13131f] p-4 space-y-3">
-        <h2 className="text-sm font-semibold text-zinc-300">Optimizador de ruta</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-zinc-300">Optimizador de ruta</h2>
+          {result && (
+            <button
+              onClick={resetResults}
+              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              ⊗ Limpiar
+            </button>
+          )}
+        </div>
         <p className="text-xs text-zinc-500">
           Encuentra las estaciones más baratas de {FUEL_LABELS[fuelType]} a lo largo de tu camino.
         </p>
@@ -166,6 +192,32 @@ export default function RouteOptimizer({ stations, fuelType, onSelectStation, on
                        text-sm text-zinc-200 placeholder:text-zinc-600
                        focus:outline-none focus:border-emerald-500/40"
           />
+        </div>
+
+        {/* Snap radius control */}
+        <div>
+          <button
+            onClick={() => setShowSnap(v => !v)}
+            className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+          >
+            ⚙ Radio de búsqueda: {snapKm} km {showSnapOpts ? '▲' : '▼'}
+          </button>
+          {showSnapOpts && (
+            <div className="flex gap-2 mt-2 flex-wrap">
+              {SNAP_OPTIONS.map(km => (
+                <button
+                  key={km}
+                  onClick={() => { setSnapKm(km); setShowSnap(false); }}
+                  className={`px-3 py-1 rounded-full text-xs border transition-all
+                    ${snapKm === km
+                      ? 'bg-emerald-500 text-black border-emerald-500'
+                      : 'border-white/10 text-zinc-400 hover:border-white/20'}`}
+                >
+                  {km} km
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <button
@@ -205,7 +257,7 @@ export default function RouteOptimizer({ stations, fuelType, onSelectStation, on
             </div>
           </div>
 
-          {result.stations.length === 0 ? (
+          {result.allStations.length === 0 ? (
             <div className="rounded-2xl border border-white/8 bg-[#13131f] p-8 text-center">
               <span className="text-3xl">🔍</span>
               <p className="text-sm text-zinc-500 mt-2">
@@ -215,9 +267,9 @@ export default function RouteOptimizer({ stations, fuelType, onSelectStation, on
           ) : (
             <>
               <p className="text-xs text-zinc-500 px-1">
-                {result.stations.length} estación{result.stations.length !== 1 ? 'es' : ''} más barata{result.stations.length !== 1 ? 's' : ''} en ruta
+                {displayedStations.length} de {result.allStations.length} estacion{result.allStations.length !== 1 ? 'es' : ''} más barata{result.allStations.length !== 1 ? 's' : ''} en ruta
               </p>
-              {result.stations.map((s, i) => {
+              {displayedStations.map((s, i) => {
                 const price = s.prices?.[fuelType];
                 return (
                   <button
@@ -248,6 +300,17 @@ export default function RouteOptimizer({ stations, fuelType, onSelectStation, on
                   </button>
                 );
               })}
+
+              {/* Show more button */}
+              {!showAll && result.allStations.length > TOP_N && (
+                <button
+                  onClick={() => setShowAll(true)}
+                  className="w-full py-2 rounded-xl border border-white/8 text-zinc-500 text-sm
+                             hover:border-white/15 hover:text-zinc-300 transition-colors"
+                >
+                  Ver más ({result.allStations.length - TOP_N} estaciones)
+                </button>
+              )}
             </>
           )}
         </div>

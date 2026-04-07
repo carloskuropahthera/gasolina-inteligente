@@ -20,24 +20,31 @@ interface Props {
 
 const CHUNK_SIZE = 400;
 
+const MX_BOUNDS = { latMin: 14, latMax: 33, lngMin: -118, lngMax: -86 };
+
 export default function MapView({ stations, fuelType, userLocation, selectedStation, onSelectStation, stats, routeCoords }: Props) {
-  const containerRef  = useRef<HTMLDivElement>(null);
-  const mapRef        = useRef<L.Map | null>(null);
-  const markersRef    = useRef<ReturnType<typeof L.markerClusterGroup> | null>(null);
-  const userPinRef    = useRef<L.Marker | null>(null);
-  const routeLineRef  = useRef<L.Polyline | null>(null);
-  const lastZoneRef   = useRef<'dot' | 'label' | null>(null);
-  const LRef          = useRef<typeof L | null>(null);
-  const selectRef     = useRef(onSelectStation);
+  const containerRef     = useRef<HTMLDivElement>(null);
+  const mapRef           = useRef<L.Map | null>(null);
+  const markersRef       = useRef<ReturnType<typeof L.markerClusterGroup> | null>(null);
+  const userPinRef       = useRef<L.Marker | null>(null);
+  const routeLineRef     = useRef<L.Polyline | null>(null);
+  const lastZoneRef      = useRef<'dot' | 'label' | null>(null);
+  const LRef             = useRef<typeof L | null>(null);
+  const selectRef        = useRef(onSelectStation);
   // Refs keep iconCreateFunction + zoomend always reading current values
-  const fuelTypeRef   = useRef(fuelType);
-  const statsRef      = useRef(stats);
-  const [loading, setLoading] = useState(true);
+  const fuelTypeRef      = useRef(fuelType);
+  const statsRef         = useRef(stats);
+  const stationsRef      = useRef(stations);
+  const userLocationRef  = useRef(userLocation);
+  const [loading,   setLoading]   = useState(true);
+  const [mapReady,  setMapReady]  = useState(false);
 
   // Always keep refs in sync with latest props (no stale closures)
-  selectRef.current  = onSelectStation;
-  fuelTypeRef.current = fuelType;
-  statsRef.current   = stats;
+  selectRef.current      = onSelectStation;
+  fuelTypeRef.current    = fuelType;
+  statsRef.current       = stats;
+  stationsRef.current    = stations;
+  userLocationRef.current = userLocation;
 
   // ── Init map once ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -61,11 +68,33 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
       if (mapRef.current) return; // Guard: prevent double-init in React Strict Mode
       LRef.current = L;
 
+      // Restore persisted map position (#8)
+      let initCenter: [number, number] = [23.6345, -102.5528];
+      let initZoom = 5;
+      try {
+        const saved = JSON.parse(localStorage.getItem('gi_map_pos') ?? 'null') as { lat: number; lng: number; zoom: number } | null;
+        if (saved &&
+          saved.lat >= MX_BOUNDS.latMin && saved.lat <= MX_BOUNDS.latMax &&
+          saved.lng >= MX_BOUNDS.lngMin && saved.lng <= MX_BOUNDS.lngMax
+        ) {
+          initCenter = [saved.lat, saved.lng];
+          initZoom   = saved.zoom;
+        }
+      } catch { /* ignore */ }
+
       const map = L.map(containerRef.current!, {
-        center: [23.6345, -102.5528],
-        zoom: 5,
+        center: initCenter,
+        zoom: initZoom,
         minZoom: 4,
         maxZoom: 18,
+      });
+
+      // Persist position on moveend (#8)
+      map.on('moveend', () => {
+        const c = map.getCenter();
+        try {
+          localStorage.setItem('gi_map_pos', JSON.stringify({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }));
+        } catch { /* storage full */ }
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -76,6 +105,7 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
       // Clear loading immediately — map is ready, tiles stream in behind the markers
       clearTimeout(loadingFallback);
       setLoading(false);
+      setMapReady(true);
 
       const markers = L.markerClusterGroup({
         maxClusterRadius: 50,
@@ -102,8 +132,17 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
           const topBrand = Object.entries(brandCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'OTRO';
           const borderColor = getBrandColor(topBrand);
 
+          // Cluster background tinted by min price relative to global range (#20)
+          const allPrices = stationsRef.current
+            .map(s => s.prices?.[ft])
+            .filter((v): v is number => v != null);
+          const globalMin = allPrices.length ? Math.min(...allPrices) : 0;
+          const globalMax = allPrices.length ? Math.max(...allPrices) : 100;
+          const bgBase = minPrice != null ? priceColor(minPrice, globalMin, globalMax) : '#1a1a2e';
+          const bgColor = bgBase + '42'; // 26% alpha
+
           return L.divIcon({
-            html: `<div class="gi-cluster" data-count="${count}" style="border-color:${borderColor}">${label}</div>`,
+            html: `<div class="gi-cluster" data-count="${count}" style="border-color:${borderColor};background:${bgColor}">${label}</div>`,
             className: '',
             iconSize: [84, 24],
             iconAnchor: [42, 12],
@@ -260,6 +299,22 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
     );
   }, [selectedStation]);
 
+  const handleLocateMe = () => {
+    const loc = userLocationRef.current;
+    if (!mapRef.current || !loc) return;
+    mapRef.current.flyTo([loc.lat, loc.lng], 13);
+  };
+
+  const handleFitAll = () => {
+    const map = mapRef.current;
+    const markers = markersRef.current as unknown as { getBounds?: () => L.LatLngBounds } | null;
+    if (!map || !markers?.getBounds) return;
+    try {
+      const bounds = markers.getBounds();
+      if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
+    } catch { /* no markers yet */ }
+  };
+
   return (
     <div className="flex-1 w-full relative" style={{ minHeight: 0 }}>
       <div ref={containerRef} className="absolute inset-0" />
@@ -282,6 +337,30 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
             <p className="text-zinc-300 font-semibold">Sin estaciones</p>
             <p className="text-zinc-500 text-sm">Ajusta los filtros para ver resultados</p>
           </div>
+        </div>
+      )}
+
+      {/* Floating map controls (#7) */}
+      {mapReady && (
+        <div className="absolute bottom-16 right-3 z-[400] flex flex-col gap-2">
+          {userLocation && (
+            <button
+              onClick={handleLocateMe}
+              title="Ir a mi ubicación"
+              className="w-9 h-9 rounded-xl bg-[#13131f]/90 border border-white/10 shadow-lg
+                         text-sm flex items-center justify-center hover:bg-white/10 transition-colors"
+            >
+              📍
+            </button>
+          )}
+          <button
+            onClick={handleFitAll}
+            title="Ver todas las estaciones"
+            className="w-9 h-9 rounded-xl bg-[#13131f]/90 border border-white/10 shadow-lg
+                       text-sm flex items-center justify-center hover:bg-white/10 transition-colors"
+          >
+            ⊞
+          </button>
         </div>
       )}
 

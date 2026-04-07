@@ -4,14 +4,16 @@
 // CRE data refreshes every 4h — TTL matches this cadence.
 
 import { useEffect, useState, useCallback } from 'react';
-import type { Station, StationPrices } from './types';
+import type { Station, StationPrices, FuelType } from './types';
 
-const DB_NAME  = 'gasolina-inteligente';
-const DB_VER   = 1;
-const STORE    = 'stations-cache';
+const DB_NAME   = 'gasolina-inteligente';
+const DB_VER    = 2;  // bumped: adds 'price-history' store
+const STORE     = 'stations-cache';
+const HIST_STORE = 'price-history';  // key = YYYY-MM-DD, value = Record<stationId, StationPrices>
 const CACHE_KEY = 'latest';
 const SNAP_KEY  = 'price-snapshot';
-const TTL_MS   = 4 * 60 * 60 * 1000; // 4 hours
+const TTL_MS    = 4 * 60 * 60 * 1000; // 4 hours
+const MAX_HIST  = 7; // rolling 7-day window
 
 interface CacheEntry {
   stations: Station[];
@@ -22,7 +24,17 @@ interface CacheEntry {
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VER);
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+    req.onupgradeneeded = (e) => {
+      const db = req.result;
+      // Migrate v1 → v2: create price-history store if it doesn't exist
+      if (!db.objectStoreNames.contains(STORE)) {
+        db.createObjectStore(STORE);
+      }
+      if (!db.objectStoreNames.contains(HIST_STORE)) {
+        db.createObjectStore(HIST_STORE);
+      }
+      void e; // suppress unused warning
+    };
     req.onsuccess = () => resolve(req.result);
     req.onerror   = () => reject(req.error);
   });
@@ -77,6 +89,65 @@ async function writeCache(entry: CacheEntry, prevStations: Station[]): Promise<v
   } catch { /* silently skip cache write failures */ }
 }
 
+async function writePriceHistory(stations: Station[]): Promise<void> {
+  try {
+    const db    = await openDB();
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+    // Build today's snapshot
+    const todayPrices: Record<string, StationPrices> = {};
+    for (const s of stations) {
+      if (s.prices) todayPrices[s.id] = s.prices;
+    }
+
+    // Read existing dates to enforce MAX_HIST rolling window
+    const allKeys: string[] = await new Promise((resolve, reject) => {
+      const tx  = db.transaction(HIST_STORE, 'readonly');
+      const req = tx.objectStore(HIST_STORE).getAllKeys();
+      req.onsuccess = () => resolve(req.result as string[]);
+      req.onerror   = () => reject(req.error);
+    });
+
+    const toDelete = allKeys
+      .filter(k => k !== today)
+      .sort()
+      .slice(0, Math.max(0, allKeys.length - MAX_HIST + 1));
+
+    const tx = db.transaction(HIST_STORE, 'readwrite');
+    const store = tx.objectStore(HIST_STORE);
+    for (const key of toDelete) store.delete(key);
+    store.put(todayPrices, today);
+  } catch { /* ignore */ }
+}
+
+export async function getPriceHistory(
+  stationId: string,
+  fuelType: FuelType,
+): Promise<{ date: string; price: number }[]> {
+  try {
+    const db = await openDB();
+    const allKeys: string[] = await new Promise((resolve, reject) => {
+      const tx  = db.transaction(HIST_STORE, 'readonly');
+      const req = tx.objectStore(HIST_STORE).getAllKeys();
+      req.onsuccess = () => resolve(req.result as string[]);
+      req.onerror   = () => reject(req.error);
+    });
+
+    const entries: { date: string; price: number }[] = [];
+    for (const date of allKeys.sort()) {
+      const snapshot: Record<string, StationPrices> = await new Promise((resolve, reject) => {
+        const tx  = db.transaction(HIST_STORE, 'readonly');
+        const req = tx.objectStore(HIST_STORE).get(date);
+        req.onsuccess = () => resolve(req.result ?? {});
+        req.onerror   = () => reject(req.error);
+      });
+      const price = snapshot[stationId]?.[fuelType];
+      if (price != null) entries.push({ date, price });
+    }
+    return entries;
+  } catch { return []; }
+}
+
 async function fetchFresh(): Promise<{ stations: Station[]; exportedAt: string | null }> {
   const res  = await fetch('/api/stations');
   const data = await res.json();
@@ -89,7 +160,7 @@ export interface StationsCacheResult {
   stations: Station[];
   exportedAt: string | null;
   isLoading: boolean;
-  cacheAgeMs: number | null; // ms since last cache write, null if fresh fetch
+  cacheAgeMs: number | null;
   loadingPhase: LoadingPhase;
   prevPrices: Record<string, StationPrices> | null;
   refresh: () => Promise<void>;
@@ -116,6 +187,7 @@ export function useStationsCache(): StationsCacheResult {
       if (prevSnapshot) setPrevPrices(prevSnapshot);
       const fresh = await fetchFresh();
       await writeCache({ ...fresh, savedAt: Date.now() }, stations);
+      await writePriceHistory(fresh.stations);
       applyData(fresh.stations, fresh.exportedAt, null);
     } catch { /* network error — keep stale data */ }
     finally { setLoadingPhase(null); }
@@ -125,7 +197,6 @@ export function useStationsCache(): StationsCacheResult {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      // 1. Serve from IndexedDB instantly (stale-while-revalidate)
       setLoadingPhase('cache');
       const cached = await readCache();
       if (cached && !cancelled) {
@@ -134,11 +205,9 @@ export function useStationsCache(): StationsCacheResult {
         setIsLoading(false);
         setLoadingPhase(null);
 
-        // Load prev prices snapshot for trend arrows
         const snap = await readSnapshot();
         if (snap && !cancelled) setPrevPrices(snap);
 
-        // 2. Background refresh if stale (> TTL) or always after 1s
         const shouldRefresh = ageMs > TTL_MS;
         if (shouldRefresh) {
           refresh();
@@ -148,12 +217,12 @@ export function useStationsCache(): StationsCacheResult {
         return;
       }
 
-      // 3. No cache — fetch fresh and show loading state
       setLoadingPhase('network');
       try {
         const fresh = await fetchFresh();
         if (!cancelled) {
           await writeCache({ ...fresh, savedAt: Date.now() }, []);
+          await writePriceHistory(fresh.stations);
           applyData(fresh.stations, fresh.exportedAt, null);
         }
       } catch { /* keep empty */ } finally {

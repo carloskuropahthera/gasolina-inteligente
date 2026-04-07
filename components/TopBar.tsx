@@ -1,5 +1,5 @@
 'use client';
-import type { RefObject } from 'react';
+import { useState, type RefObject } from 'react';
 import { timeAgo } from '@/lib/utils';
 
 interface Props {
@@ -16,6 +16,9 @@ interface Props {
   filtersActive: number;
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  recentSearches?: string[];
+  onSelectRecent?: (q: string) => void;
+  pointsBadge?: string | null;
 }
 
 export default function TopBar({
@@ -24,7 +27,12 @@ export default function TopBar({
   exportedAt,
   onToggleFilters, filtersActive,
   onRefresh, isRefreshing,
+  recentSearches = [],
+  onSelectRecent,
+  pointsBadge,
 }: Props) {
+  const [searchFocused, setSearchFocused] = useState(false);
+  const showRecent = searchFocused && searchQuery === '' && recentSearches.length > 0;
 
   return (
     <header className="flex items-center gap-2 px-3 py-2 border-b border-white/5 bg-[#0d0d1a] z-30 shrink-0">
@@ -39,21 +47,50 @@ export default function TopBar({
 
       {/* Search */}
       <div className="flex-1 relative max-w-md">
-        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">🔍</span>
+        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 text-sm pointer-events-none">🔍</span>
         <input
           ref={searchRef}
           type="search"
           value={searchQuery}
           onChange={e => onSearchChange(e.target.value)}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
           placeholder="Buscar nombre, ciudad, marca, CP… (/)"
           className="w-full bg-white/5 border border-white/8 rounded-lg
-                     pl-8 pr-3 py-1.5 text-sm text-zinc-200
+                     pl-8 pr-7 py-1.5 text-sm text-zinc-200
                      placeholder:text-zinc-600 focus:outline-none
                      focus:border-emerald-500/50 focus:bg-white/8 transition-colors"
         />
+        {/* Clear button */}
+        {searchQuery && (
+          <button
+            onMouseDown={e => { e.preventDefault(); onSearchChange(''); searchRef.current?.focus(); }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-200 text-xs transition-colors"
+            aria-label="Borrar búsqueda"
+          >
+            ×
+          </button>
+        )}
+
+        {/* Recent searches dropdown */}
+        {showRecent && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-[#13131f] border border-white/8 rounded-lg
+                          shadow-xl z-50 overflow-hidden">
+            <p className="text-[10px] text-zinc-600 px-3 pt-2 pb-1 uppercase tracking-wider">Búsquedas recientes</p>
+            {recentSearches.map(q => (
+              <button
+                key={q}
+                onMouseDown={() => { onSearchChange(q); onSelectRecent?.(q); }}
+                className="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-white/5 transition-colors flex items-center gap-2"
+              >
+                <span className="text-zinc-600 text-xs">↺</span> {q}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Data freshness + refresh */}
+      {/* Data freshness + refresh + points */}
       {exportedAt && (
         <div className="hidden md:flex items-center gap-1.5 text-xs text-zinc-500 shrink-0">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -68,6 +105,11 @@ export default function TopBar({
             >
               ↻
             </button>
+          )}
+          {pointsBadge && (
+            <span className="ml-2 px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-semibold">
+              {pointsBadge}
+            </span>
           )}
         </div>
       )}
