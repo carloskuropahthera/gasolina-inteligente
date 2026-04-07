@@ -1,9 +1,10 @@
 'use client';
-import type { Station, FuelType, NationalStats } from '@/lib/types';
-import { formatMXN, formatDistance, getBrandColor, timeAgo, FUEL_LABELS } from '@/lib/utils';
+import type { Station, FuelType, NationalStats, StationPrices } from '@/lib/types';
+import { formatMXN, formatDistance, getBrandColor, timeAgo, FUEL_LABELS, priceTrend } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import { useFavorites } from '@/lib/useFavorites';
 import { usePriceAlerts } from '@/lib/usePriceAlerts';
+import { useReports } from '@/lib/useReports';
 
 interface Props {
   station: Station;
@@ -11,13 +12,15 @@ interface Props {
   stats: NationalStats;
   onClose: () => void;
   onReport: () => void;
+  prevPrices?: Record<string, StationPrices> | null;
 }
 
 const TANK_LITERS = 50;
 
-export default function StationModal({ station, fuelType, stats, onClose, onReport }: Props) {
+export default function StationModal({ station, fuelType, stats, onClose, onReport, prevPrices }: Props) {
   const { isFavorite, toggle: toggleFav } = useFavorites();
   const { getAlert, addAlert, removeAlert } = usePriceAlerts();
+  const { getStationReports } = useReports();
   const [alertInput, setAlertInput] = useState('');
   const [showAlertInput, setShowAlertInput] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
@@ -35,6 +38,9 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
   const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}#station=${encodeURIComponent(station.id)}`;
   const fav = isFavorite(station.id);
   const existingAlert = getAlert(station.id, fuelType);
+  const communityReports = getStationReports(station.id, fuelType);
+  const latestReport = communityReports[0] ?? null;
+  const prev = prevPrices?.[station.id] ?? null;
 
   const vs = (price: number | null | undefined, avg: number) => {
     if (price == null || !avg) return null;
@@ -43,7 +49,6 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
     return { delta, isHigh: delta > 0 };
   };
 
-  // Tank savings vs. national average in pesos
   const tankSavings = (price: number | null | undefined, avg: number) => {
     if (price == null || !avg) return null;
     const saving = (avg - price) * TANK_LITERS;
@@ -162,6 +167,7 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
                 const price = p?.[ft];
                 const cmp   = vs(price, stats[ft].avg);
                 const saving = ft === fuelType ? tankSavings(price, stats[ft].avg) : null;
+                const trend  = priceTrend(price, prev?.[ft]);
                 return (
                   <div key={ft} className={`rounded-xl p-3 border text-center transition-all
                     ${ft === fuelType
@@ -172,6 +178,12 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
                       ${price != null ? (ft === fuelType ? 'text-emerald-300' : 'text-zinc-200') : 'text-zinc-600'}`}>
                       {formatMXN(price)}
                     </div>
+                    {trend && (
+                      <div className={`text-[10px] mt-0.5 font-semibold
+                        ${trend === '▲' ? 'text-orange-400' : trend === '▼' ? 'text-blue-400' : 'text-zinc-600'}`}>
+                        {trend}
+                      </div>
+                    )}
                     {cmp && (
                       <div className={`text-[10px] mt-0.5 ${cmp.isHigh ? 'text-orange-400' : 'text-blue-400'}`}>
                         {cmp.isHigh ? '▲' : '▼'} ${Math.abs(cmp.delta).toFixed(2)} vs prom.
@@ -186,6 +198,24 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
                 );
               })}
             </div>
+          </div>
+
+          {/* Amenities */}
+          <div className="rounded-xl border border-white/8 bg-white/2 p-4">
+            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Servicios</h3>
+            {station.amenities ? (
+              <div className="flex flex-wrap gap-2">
+                {station.amenities.open24h   && <span className="badge-pill bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">🕐 24h</span>}
+                {station.amenities.store     && <span className="badge-pill bg-blue-500/10 text-blue-400 border border-blue-500/20">🛒 Tienda</span>}
+                {station.amenities.restrooms && <span className="badge-pill bg-zinc-500/10 text-zinc-400 border border-zinc-500/20">🚻 Baños</span>}
+                {station.amenities.carWash   && <span className="badge-pill bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">🚗 Lavado</span>}
+                {!station.amenities.open24h && !station.amenities.store && !station.amenities.restrooms && !station.amenities.carWash && (
+                  <p className="text-xs text-zinc-600">Sin servicios registrados</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-zinc-600">Datos de servicios no disponibles aún</p>
+            )}
           </div>
 
           {/* Price alert */}
@@ -253,16 +283,28 @@ export default function StationModal({ station, fuelType, stats, onClose, onRepo
               <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                 Precio reportado por usuarios
               </h3>
-              <span className="badge-pill bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px]">
-                Próximamente
-              </span>
+              {!latestReport && (
+                <span className="badge-pill bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px]">
+                  Próximamente
+                </span>
+              )}
             </div>
-            <p className="text-xs text-zinc-500 mb-3">
-              ¿Ves un precio diferente al de la CRE? Repórtalo y ayuda a la comunidad.
-            </p>
+            {latestReport ? (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-emerald-300">{formatMXN(latestReport.price)}</span>
+                  <span className="text-xs text-zinc-500">{timeAgo(latestReport.reportedAt)}</span>
+                </div>
+                <p className="text-xs text-zinc-600">{communityReports.length} reporte{communityReports.length !== 1 ? 's' : ''} de la comunidad</p>
+              </div>
+            ) : (
+              <p className="text-xs text-zinc-500 mb-3">
+                ¿Ves un precio diferente al de la CRE? Repórtalo y ayuda a la comunidad.
+              </p>
+            )}
             <button onClick={onReport}
               className="w-full py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20
-                         text-emerald-400 text-sm font-medium hover:bg-emerald-500/20 transition-colors">
+                         text-emerald-400 text-sm font-medium hover:bg-emerald-500/20 transition-colors mt-2">
               + Reportar precio · +10 pts
             </button>
           </div>

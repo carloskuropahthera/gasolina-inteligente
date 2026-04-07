@@ -6,6 +6,8 @@ import { formatMXN, priceColor, getBrandColor, formatDistance, timeAgo } from '@
 
 // This component is always dynamically imported with ssr:false
 
+const FUEL_SHORT: Record<string, string> = { regular: 'Mgn', premium: 'Prm', diesel: 'Dsl' };
+
 interface Props {
   stations: Station[];
   fuelType: FuelType;
@@ -13,15 +15,17 @@ interface Props {
   selectedStation: Station | null;
   onSelectStation: (s: Station) => void;
   stats: NationalStats;
+  routeCoords?: [number, number][] | null;
 }
 
 const CHUNK_SIZE = 400;
 
-export default function MapView({ stations, fuelType, userLocation, selectedStation, onSelectStation, stats }: Props) {
+export default function MapView({ stations, fuelType, userLocation, selectedStation, onSelectStation, stats, routeCoords }: Props) {
   const containerRef  = useRef<HTMLDivElement>(null);
   const mapRef        = useRef<L.Map | null>(null);
   const markersRef    = useRef<ReturnType<typeof L.markerClusterGroup> | null>(null);
   const userPinRef    = useRef<L.Marker | null>(null);
+  const routeLineRef  = useRef<L.Polyline | null>(null);
   const lastZoneRef   = useRef<'dot' | 'label' | null>(null);
   const LRef          = useRef<typeof L | null>(null);
   const selectRef     = useRef(onSelectStation);
@@ -87,12 +91,22 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
             .filter((v): v is number => v != null);
           const minPrice = prices.length ? Math.min(...prices) : null;
           const count = cluster.getChildCount();
-          const label = minPrice != null ? `$${minPrice.toFixed(2)}` : `${count}`;
+          const label = minPrice != null ? `${FUEL_SHORT[ft]} $${minPrice.toFixed(2)}` : `${count}`;
+
+          // Dominant brand for border color
+          const brandCounts: Record<string, number> = {};
+          for (const m of children) {
+            const b = m._giStation?.brand ?? 'OTRO';
+            brandCounts[b] = (brandCounts[b] ?? 0) + 1;
+          }
+          const topBrand = Object.entries(brandCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'OTRO';
+          const borderColor = getBrandColor(topBrand);
+
           return L.divIcon({
-            html: `<div class="gi-cluster" data-count="${count}">${label}</div>`,
+            html: `<div class="gi-cluster" data-count="${count}" style="border-color:${borderColor}">${label}</div>`,
             className: '',
-            iconSize: [56, 24],
-            iconAnchor: [28, 12],
+            iconSize: [84, 24],
+            iconAnchor: [42, 12],
           });
         },
       } as L.MarkerClusterGroupOptions);
@@ -216,6 +230,25 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
     userPinRef.current = L.marker([userLocation.lat, userLocation.lng], { icon, zIndexOffset: 1000 }).addTo(map);
     map.setView([userLocation.lat, userLocation.lng], Math.max(mapRef.current?.getZoom() ?? 0, 12));
   }, [userLocation]);
+
+  // ── Route polyline ────────────────────────────────────────────────────
+  useEffect(() => {
+    const L = LRef.current;
+    const map = mapRef.current;
+    if (!L || !map) return;
+
+    if (routeLineRef.current) { map.removeLayer(routeLineRef.current); routeLineRef.current = null; }
+    if (!routeCoords?.length) return;
+
+    // OSRM returns [lng, lat]; Leaflet expects [lat, lng]
+    const latLngs = routeCoords.map(([lng, lat]) => [lat, lng] as [number, number]);
+    routeLineRef.current = L.polyline(latLngs, {
+      color: '#10b981',
+      weight: 4,
+      opacity: 0.8,
+    }).addTo(map);
+    map.fitBounds(routeLineRef.current.getBounds(), { padding: [40, 40] });
+  }, [routeCoords]);
 
   // ── Pan to selected station ───────────────────────────────────────────
   useEffect(() => {

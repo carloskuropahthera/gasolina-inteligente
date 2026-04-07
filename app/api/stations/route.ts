@@ -57,6 +57,20 @@ export async function GET() {
       .map(normalizeStation)
       .filter(s => s.id && s.lat && s.lng);
 
+    // Anomaly detection: flag stations where regular price deviates > 3 stddev from mean
+    const regularPrices = stations.filter(s => s.prices?.regular != null).map(s => s.prices!.regular!);
+    if (regularPrices.length > 10) {
+      const mean = regularPrices.reduce((a, b) => a + b, 0) / regularPrices.length;
+      const variance = regularPrices.reduce((a, b) => a + (b - mean) ** 2, 0) / regularPrices.length;
+      const stddev = Math.sqrt(variance);
+      const threshold = 3 * stddev;
+      for (const s of stations) {
+        if (s.prices?.regular != null && Math.abs(s.prices.regular - mean) > threshold) {
+          s._isAnomaly = true;
+        }
+      }
+    }
+
     return NextResponse.json(
       {
         stations,

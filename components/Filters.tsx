@@ -8,9 +8,10 @@ interface Props {
   brands: string[];
   states: string[];
   onClose: () => void;
+  open24hCount?: number;
 }
 
-export default function Filters({ filters, onChange, brands, states, onClose }: Props) {
+export default function Filters({ filters, onChange, brands, states, onClose, open24hCount = 0 }: Props) {
   const set = (patch: Partial<AppFilters>) => onChange({ ...filters, ...patch });
 
   const toggle = (field: 'brands' | 'states', val: string) => {
@@ -98,9 +99,28 @@ export default function Filters({ filters, onChange, brands, states, onClose }: 
                 ⚠️ Solo anomalías
               </span>
             </label>
-            <label className="flex items-center gap-2 opacity-40 cursor-not-allowed">
-              <input type="checkbox" disabled className="w-4 h-4 rounded border-white/20 bg-white/5" />
-              <span className="text-zinc-500">🕐 Abierto 24h <span className="text-[10px] text-zinc-600">(próximamente)</span></span>
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={!!filters.open24h}
+                onChange={e => set({ open24h: e.target.checked })}
+                className="w-4 h-4 rounded border-white/20 bg-white/5 accent-emerald-500"
+              />
+              <span className="text-zinc-300 group-hover:text-zinc-100 transition-colors">
+                🕐 Abierto 24h
+                {open24hCount === 0 && <span className="text-[10px] text-zinc-600 ml-1">(sin datos)</span>}
+              </span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={!!filters.showOnlyWithData}
+                onChange={e => set({ showOnlyWithData: e.target.checked })}
+                className="w-4 h-4 rounded border-white/20 bg-white/5 accent-emerald-500"
+              />
+              <span className="text-zinc-300 group-hover:text-zinc-100 transition-colors">
+                💰 Solo con precio
+              </span>
             </label>
           </div>
         </section>

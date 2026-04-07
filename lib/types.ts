@@ -57,6 +57,7 @@ export interface AppFilters {
   priceMax: number | null;
   showAnomalies: boolean;
   open24h: boolean;
+  showOnlyWithData: boolean;
 }
 
 export interface NationalStats {
@@ -66,6 +67,7 @@ export interface NationalStats {
   totalStations: number;
   stationsWithData: number;
   cheapest: Station | null;
+  cheapestByFuel: { regular: Station | null; premium: Station | null; diesel: Station | null };
   exportedAt: string | null;
 }
 

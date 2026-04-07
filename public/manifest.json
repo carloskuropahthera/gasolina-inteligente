@@ -4,6 +4,9 @@
   "description": "Precios de gasolina en tiempo real México",
   "start_url": "/",
   "display": "standalone",
+  "orientation": "portrait",
+  "lang": "es-MX",
+  "categories": ["utilities", "navigation"],
   "background_color": "#09090f",
   "theme_color": "#09090f",
   "icons": [

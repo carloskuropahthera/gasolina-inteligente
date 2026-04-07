@@ -3,9 +3,11 @@
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { Station, AppFilters, ViewMode, FuelType } from '@/lib/types';
-import { filterStations, addDistances, computeStats, DEFAULT_FILTERS, timeAgo } from '@/lib/utils';
+import { filterStations, addDistances, computeStats, DEFAULT_FILTERS, timeAgo, FUEL_LABELS, formatMXN } from '@/lib/utils';
 import { useStationsCache } from '@/lib/useStationsCache';
 import { useFavorites } from '@/lib/useFavorites';
+import { usePriceAlerts } from '@/lib/usePriceAlerts';
+import { useReports } from '@/lib/useReports';
 import TopBar      from '@/components/TopBar';
 import PriceStats  from '@/components/PriceStats';
 import ViewToggle  from '@/components/ViewToggle';
@@ -30,18 +32,24 @@ const MapView = dynamic(() => import('@/components/MapView'), {
 const RouteOptimizer = dynamic(() => import('@/components/RouteOptimizer'), { ssr: false });
 
 export default function Home() {
-  const { stations: fetchedStations, exportedAt, isLoading, cacheAgeMs } = useStationsCache();
-  const { favorites, isFavorite, toggle: toggleFav } = useFavorites();
+  const { stations: fetchedStations, exportedAt, isLoading, cacheAgeMs, loadingPhase, prevPrices, refresh } = useStationsCache();
+  const { favorites, toggle: toggleFav } = useFavorites();
+  const { alerts } = usePriceAlerts();
+  const { addReport } = useReports();
 
   const [allStations,     setAllStations]     = useState<Station[]>([]);
   const [filters,         setFilters]         = useState<AppFilters>(DEFAULT_FILTERS);
   const [viewMode,        setViewMode]        = useState<ViewMode>('map');
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [userLocation,    setUserLocation]    = useState<{ lat: number; lng: number } | null>(null);
+  const [locationError,   setLocationError]   = useState<string | null>(null);
   const [showFilters,     setShowFilters]     = useState(false);
   const [showReport,      setShowReport]      = useState(false);
   const [searchQuery,     setSearchQuery]     = useState('');
   const [debouncedQuery,  setDebouncedQuery]  = useState('');
+  const [isRefreshing,    setIsRefreshing]    = useState(false);
+  const [routeCoords,     setRouteCoords]     = useState<[number, number][] | null>(null);
+  const [triggeredAlerts, setTriggeredAlerts] = useState<typeof alerts>([]);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Sync IndexedDB cache results into allStations
@@ -49,13 +57,53 @@ export default function Home() {
     if (fetchedStations.length > 0) setAllStations(fetchedStations);
   }, [fetchedStations]);
 
-  // ── Search debounce ─────────────────────────────────────────────────────
+  // ── Read URL params on mount (#17) ────────────────────────────────────────
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const fuel = params.get('fuel');
+    const view = params.get('view');
+    if (fuel && ['regular', 'premium', 'diesel'].includes(fuel)) {
+      setFilters(f => ({ ...f, fuelType: fuel as FuelType }));
+    }
+    if (view && ['map', 'list', 'route'].includes(view)) {
+      setViewMode(view as ViewMode);
+    }
+    // Deep-link to station via hash
+    const hash = window.location.hash;
+    const stationMatch = hash.match(/^#station=(.+)$/);
+    if (stationMatch) {
+      const id = decodeURIComponent(stationMatch[1]);
+      // will be handled once allStations loads
+      sessionStorage.setItem('gi_open_station', id);
+    }
+  }, []);
+
+  // ── Auto-open station from deep link once data loads ───────────────────
+  useEffect(() => {
+    const id = sessionStorage.getItem('gi_open_station');
+    if (!id || !allStations.length) return;
+    const s = allStations.find(st => st.id === id);
+    if (s) { setSelectedStation(s); sessionStorage.removeItem('gi_open_station'); }
+  }, [allStations]);
+
+  // ── Push URL state changes (#17) ──────────────────────────────────────
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams();
+    if (filters.fuelType !== 'regular') params.set('fuel', filters.fuelType);
+    if (viewMode !== 'map') params.set('view', viewMode);
+    const qs = params.toString();
+    history.replaceState(null, '', qs ? `?${qs}` : '/');
+  }, [filters.fuelType, viewMode]);
+
+  // ── Search debounce ────────────────────────────────────────────────────
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(searchQuery), 200);
     return () => clearTimeout(t);
   }, [searchQuery]);
 
-  // ── Keyboard shortcut: "/" focuses search ───────────────────────────────
+  // ── Keyboard shortcut: "/" focuses search ──────────────────────────────
   useEffect(() => {
     const fn = (e: KeyboardEvent) => {
       if (e.key === '/' && document.activeElement?.tagName !== 'INPUT') {
@@ -71,23 +119,40 @@ export default function Home() {
     return () => window.removeEventListener('keydown', fn);
   }, []);
 
-  // Stations loaded from IndexedDB via useStationsCache — no separate fetch needed
-
-  // ── GPS location ────────────────────────────────────────────────────────
+  // ── GPS location (#4) ──────────────────────────────────────────────────
   const requestLocation = useCallback(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      setLocationError('Geolocalización no disponible');
+      return;
+    }
+    setLocationError(null);
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         const loc = { lat: coords.latitude, lng: coords.longitude };
         setUserLocation(loc);
+        setLocationError(null);
         setAllStations(prev => addDistances(prev, loc.lat, loc.lng));
       },
-      () => { /* permission denied — silent */ },
+      (err) => {
+        const msgs: Record<number, string> = {
+          1: 'Permiso denegado',
+          2: 'Posición no disponible',
+          3: 'Tiempo de espera agotado',
+        };
+        setLocationError(msgs[err.code] ?? 'Error de ubicación');
+      },
       { timeout: 8000 }
     );
   }, []);
 
-  // ── Filtered & searched stations ────────────────────────────────────────
+  // ── Manual refresh (#5) ────────────────────────────────────────────────
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await refresh();
+    setIsRefreshing(false);
+  }, [refresh]);
+
+  // ── Filtered & searched stations ───────────────────────────────────────
   const displayed = useMemo(() => {
     let result = filterStations(allStations, filters);
     if (debouncedQuery.trim()) {
@@ -96,7 +161,9 @@ export default function Home() {
         s.name.toLowerCase().includes(q) ||
         s.city.toLowerCase().includes(q) ||
         s.state.toLowerCase().includes(q) ||
-        s.brand.toLowerCase().includes(q)
+        s.brand.toLowerCase().includes(q) ||
+        (s.address?.toLowerCase().includes(q) ?? false) ||
+        (s.zipCode?.includes(q) ?? false)
       );
     }
     return result;
@@ -104,10 +171,29 @@ export default function Home() {
 
   const stats = useMemo(() => computeStats(allStations), [allStations]);
 
-  // ── Unique brands + states for filter UI (exclude "OTRO" if it's 99%+ of data) ──
+  // ── Cheapest near user (≤5km) after GPS grant (#14) ───────────────────
+  const nearestCheapest = useMemo(() => {
+    if (!userLocation) return null;
+    const ft = filters.fuelType;
+    const nearby = displayed.filter(s => s.distanceKm != null && s.distanceKm <= 5 && s.prices?.[ft] != null && !s._isAnomaly);
+    if (!nearby.length) return null;
+    return nearby.sort((a, b) => a.prices![ft]! - b.prices![ft]!)[0];
+  }, [displayed, userLocation, filters.fuelType]);
+
+  // ── Live price alert checking (#7) ────────────────────────────────────
+  useEffect(() => {
+    if (!alerts.length || !allStations.length) return;
+    const triggered = alerts.filter(alert => {
+      const station = allStations.find(s => s.id === alert.stationId);
+      const price = station?.prices?.[alert.fuelType];
+      return price != null && price < alert.threshold;
+    });
+    setTriggeredAlerts(triggered);
+  }, [allStations, alerts]);
+
+  // ── Unique brands + states for filter UI ──────────────────────────────
   const brands = useMemo(() => {
     const all = [...new Set(allStations.map(s => s.brand))].filter(Boolean).sort();
-    // Only show brands if there's more than just "OTRO"
     return all.filter(b => b !== 'OTRO');
   }, [allStations]);
 
@@ -116,7 +202,12 @@ export default function Home() {
     [allStations]
   );
 
-  // ── Fuel type shortcut from PriceStats ─────────────────────────────────
+  const open24hCount = useMemo(() =>
+    allStations.filter(s => s.amenities?.open24h).length,
+    [allStations]
+  );
+
+  // ── Fuel type shortcut from PriceStats ────────────────────────────────
   const setFuelType = (ft: FuelType) =>
     setFilters(f => ({ ...f, fuelType: ft }));
 
@@ -125,17 +216,19 @@ export default function Home() {
     (filters.maxDistanceKm != null ? 1 : 0) +
     (filters.showAnomalies ? 1 : 0) +
     (filters.priceMin != null ? 1 : 0) +
-    (filters.priceMax != null ? 1 : 0);
+    (filters.priceMax != null ? 1 : 0) +
+    (filters.showOnlyWithData ? 1 : 0);
 
-  // ── Loading skeleton ────────────────────────────────────────────────────
+  // ── Loading skeleton (#19) ────────────────────────────────────────────
   if (isLoading) {
+    const phaseMsg = loadingPhase === 'cache' ? 'Leyendo caché…' : `Descargando ${allStations.length ? allStations.length.toLocaleString('es-MX') : '14,638'} estaciones…`;
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[#09090f]">
         <div className="text-5xl animate-bounce">⛽</div>
         <p className="text-zinc-300 font-semibold text-lg">Gasolina Inteligente</p>
-        <p className="text-zinc-500 text-sm">Cargando precios CRE…</p>
+        <p className="text-zinc-500 text-sm">{phaseMsg}</p>
         <div className="w-48 h-1.5 bg-zinc-800 rounded-full overflow-hidden mt-2">
-          <div className="h-full bg-emerald-500 rounded-full animate-pulse w-2/3" />
+          <div className="h-full bg-emerald-500 rounded-full shimmer" />
         </div>
       </div>
     );
@@ -151,11 +244,14 @@ export default function Home() {
         searchRef={searchRef}
         userLocation={userLocation}
         onRequestLocation={requestLocation}
+        locationError={locationError}
         exportedAt={exportedAt}
         totalShowing={displayed.length}
         totalAll={allStations.length}
         onToggleFilters={() => setShowFilters(v => !v)}
         filtersActive={filtersActive}
+        onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
       />
 
       {/* ── National Stats Bar ──────────────────────────────────────── */}
@@ -164,6 +260,8 @@ export default function Home() {
         activeFuel={filters.fuelType}
         onSelectFuel={setFuelType}
         exportedAt={exportedAt}
+        nearestCheapest={nearestCheapest}
+        onSelectStation={setSelectedStation}
       />
 
       {/* ── View Toggle ─────────────────────────────────────────────── */}
@@ -180,6 +278,24 @@ export default function Home() {
           <span className="text-yellow-400 text-xs">⚠️ Datos guardados hace {timeAgo(new Date(Date.now() - cacheAgeMs).toISOString())} — actualizando…</span>
         </div>
       )}
+
+      {/* ── Triggered price alerts (#7) ──────────────────────────────── */}
+      {triggeredAlerts.map(alert => {
+        const station = allStations.find(s => s.id === alert.stationId);
+        const price = station?.prices?.[alert.fuelType];
+        return (
+          <div key={`${alert.stationId}-${alert.fuelType}`}
+               className="flex items-center justify-between px-3 py-1.5 bg-emerald-500/10 border-b border-emerald-500/20 shrink-0">
+            <span className="text-emerald-400 text-xs">
+              🔔 {alert.stationName} — {FUEL_LABELS[alert.fuelType]} {price != null ? formatMXN(price) : ''} (alerta: &lt;{formatMXN(alert.threshold)})
+            </span>
+            <button
+              onClick={() => setTriggeredAlerts(prev => prev.filter(a => !(a.stationId === alert.stationId && a.fuelType === alert.fuelType)))}
+              className="text-zinc-500 hover:text-zinc-300 text-xs ml-2"
+            >✕</button>
+          </div>
+        );
+      })}
 
       {/* ── Main Content ────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden relative">
@@ -200,6 +316,7 @@ export default function Home() {
                 brands={brands}
                 states={states}
                 onClose={() => setShowFilters(false)}
+                open24hCount={open24hCount}
               />
             </div>
           </>
@@ -215,6 +332,7 @@ export default function Home() {
               selectedStation={selectedStation}
               onSelectStation={setSelectedStation}
               stats={stats}
+              routeCoords={routeCoords}
             />
           )}
           {viewMode === 'list' && (
@@ -225,6 +343,7 @@ export default function Home() {
               onSelectStation={setSelectedStation}
               favorites={favorites}
               onToggleFavorite={toggleFav}
+              prevPrices={prevPrices}
             />
           )}
           {viewMode === 'route' && (
@@ -232,6 +351,7 @@ export default function Home() {
               stations={displayed}
               fuelType={filters.fuelType}
               onSelectStation={setSelectedStation}
+              onRouteComputed={coords => { setRouteCoords(coords); setViewMode('map'); }}
             />
           )}
         </div>
@@ -241,7 +361,6 @@ export default function Home() {
       {!showReport && !selectedStation && (
         <button
           onClick={() => {
-            // If no station selected, switch to list so user can pick one
             if (viewMode === 'map') setViewMode('list');
           }}
           title="Selecciona una estación para reportar su precio"
@@ -265,6 +384,7 @@ export default function Home() {
           stats={stats}
           onClose={() => setSelectedStation(null)}
           onReport={() => setShowReport(true)}
+          prevPrices={prevPrices}
         />
       )}
 
@@ -275,8 +395,16 @@ export default function Home() {
           fuelType={filters.fuelType}
           onClose={() => setShowReport(false)}
           onSubmit={(report) => {
-            // TODO: POST to /api/reports → write to Supabase
-            console.log('Price report submitted:', report);
+            addReport({
+              stationId: report.stationId,
+              fuelType: report.fuelType,
+              price: report.price,
+              lat: report.lat ?? 0,
+              lng: report.lng ?? 0,
+              photoUrl: report.photo,
+              reportedAt: new Date().toISOString(),
+            });
+            setShowReport(false);
           }}
         />
       )}

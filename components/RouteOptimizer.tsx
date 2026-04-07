@@ -7,6 +7,7 @@ interface Props {
   stations: Station[];
   fuelType: FuelType;
   onSelectStation: (s: Station) => void;
+  onRouteComputed?: (coords: [number, number][]) => void;
 }
 
 interface RouteStation extends Station {
@@ -72,7 +73,7 @@ function stationsAlongRoute(
     .slice(0, TOP_N);
 }
 
-export default function RouteOptimizer({ stations, fuelType, onSelectStation }: Props) {
+export default function RouteOptimizer({ stations, fuelType, onSelectStation, onRouteComputed }: Props) {
   const [origin, setOrigin]         = useState('');
   const [destination, setDest]      = useState('');
   const [loading, setLoading]       = useState(false);
@@ -102,6 +103,7 @@ export default function RouteOptimizer({ stations, fuelType, onSelectStation }: 
       const totalDistKm = route.distance / 1000;
 
       const along = stationsAlongRoute(coords, stations, fuelType);
+      onRouteComputed?.(coords);
 
       // Estimate savings: cheapest on route vs national avg (simple proxy)
       const prices = along.map(s => s.prices![fuelType]!);

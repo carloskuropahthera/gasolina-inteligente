@@ -8,18 +8,22 @@ interface Props {
   searchRef: RefObject<HTMLInputElement | null>;
   userLocation: { lat: number; lng: number } | null;
   onRequestLocation: () => void;
+  locationError?: string | null;
   exportedAt: string | null;
   totalShowing: number;
   totalAll: number;
   onToggleFilters: () => void;
   filtersActive: number;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 export default function TopBar({
   searchQuery, onSearchChange, searchRef,
-  userLocation, onRequestLocation,
+  userLocation, onRequestLocation, locationError,
   exportedAt,
   onToggleFilters, filtersActive,
+  onRefresh, isRefreshing,
 }: Props) {
 
   return (
@@ -41,7 +45,7 @@ export default function TopBar({
           type="search"
           value={searchQuery}
           onChange={e => onSearchChange(e.target.value)}
-          placeholder="Buscar… (presiona /)"
+          placeholder="Buscar nombre, ciudad, marca, CP… (/)"
           className="w-full bg-white/5 border border-white/8 rounded-lg
                      pl-8 pr-3 py-1.5 text-sm text-zinc-200
                      placeholder:text-zinc-600 focus:outline-none
@@ -49,23 +53,45 @@ export default function TopBar({
         />
       </div>
 
-      {/* Data freshness */}
+      {/* Data freshness + refresh */}
       {exportedAt && (
-        <span className="hidden md:flex items-center gap-1 text-xs text-zinc-500 shrink-0">
+        <div className="hidden md:flex items-center gap-1.5 text-xs text-zinc-500 shrink-0">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
           CRE {timeAgo(exportedAt)}
-        </span>
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              title="Actualizar datos"
+              className={`ml-1 p-0.5 rounded transition-all text-zinc-600 hover:text-zinc-300
+                ${isRefreshing ? 'animate-spin text-emerald-400' : ''}`}
+            >
+              ↻
+            </button>
+          )}
+        </div>
       )}
 
       {/* GPS */}
-      <button
-        onClick={onRequestLocation}
-        title={userLocation ? 'Ubicación activa' : 'Activar ubicación'}
-        className={`p-1.5 rounded-lg transition-colors shrink-0
-          ${userLocation ? 'text-emerald-400 bg-emerald-500/10' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'}`}
-      >
-        📍
-      </button>
+      <div className="flex items-center gap-1 shrink-0">
+        <button
+          onClick={onRequestLocation}
+          title={locationError ?? (userLocation ? 'Ubicación activa' : 'Activar ubicación')}
+          className={`p-1.5 rounded-lg transition-colors
+            ${locationError
+              ? 'text-red-400 bg-red-500/10'
+              : userLocation
+                ? 'text-emerald-400 bg-emerald-500/10'
+                : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'}`}
+        >
+          📍
+        </button>
+        {locationError && (
+          <span className="hidden md:block text-xs text-red-400 bg-red-500/10 rounded px-1.5 py-0.5 max-w-32 truncate">
+            {locationError}
+          </span>
+        )}
+      </div>
 
       {/* Filters */}
       <button

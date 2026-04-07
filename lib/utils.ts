@@ -55,11 +55,14 @@ export function computeStats(stations: Station[]): NationalStats {
     return { avg, min: Math.min(...v), max: Math.max(...v), count: v.length };
   };
 
+  const cheapestForFuel = (ft: FuelType) => {
+    const candidates = withData.filter(s => s.prices?.[ft] != null && !s._isAnomaly);
+    if (!candidates.length) return null;
+    return candidates.sort((a, b) => a.prices![ft]! - b.prices![ft]!)[0];
+  };
+
   const regVals = vals('regular');
-  const cheapest = regVals.length
-    ? withData.filter(s => s.prices?.regular != null && !s._isAnomaly)
-        .sort((a, b) => (a.prices!.regular! - b.prices!.regular!))[0]
-    : null;
+  const cheapest = regVals.length ? cheapestForFuel('regular') : null;
 
   return {
     regular: stat('regular'),
@@ -68,6 +71,11 @@ export function computeStats(stations: Station[]): NationalStats {
     totalStations: stations.length,
     stationsWithData: withData.length,
     cheapest: cheapest ?? null,
+    cheapestByFuel: {
+      regular: cheapestForFuel('regular'),
+      premium: cheapestForFuel('premium'),
+      diesel:  cheapestForFuel('diesel'),
+    },
     exportedAt: stations[0]?.updatedAt ?? null,
   };
 }
@@ -83,6 +91,7 @@ export function filterStations(stations: Station[], filters: AppFilters): Statio
     if (filters.priceMin != null && (price == null || price < filters.priceMin)) return false;
     if (filters.priceMax != null && (price == null || price > filters.priceMax)) return false;
     if (filters.open24h && !s.amenities?.open24h) return false;
+    if (filters.showOnlyWithData && !s.hasData) return false;
     return true;
   });
 }
@@ -145,4 +154,5 @@ export const DEFAULT_FILTERS: AppFilters = {
   priceMax: null,
   showAnomalies: false,
   open24h: false,
+  showOnlyWithData: false,
 };

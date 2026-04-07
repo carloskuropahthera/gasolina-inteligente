@@ -1,7 +1,7 @@
 'use client';
-import { useState, useMemo } from 'react';
-import type { Station, FuelType, SortField, SortDir } from '@/lib/types';
-import { formatMXN, formatDistance, getBrandColor, FUEL_LABELS } from '@/lib/utils';
+import { useState, useMemo, useCallback } from 'react';
+import type { Station, FuelType, SortField, SortDir, StationPrices } from '@/lib/types';
+import { formatMXN, formatDistance, getBrandColor, FUEL_LABELS, priceTrend } from '@/lib/utils';
 
 interface Props {
   stations: Station[];
@@ -10,6 +10,7 @@ interface Props {
   onSelectStation: (s: Station) => void;
   favorites?: Set<string>;
   onToggleFavorite?: (id: string) => void;
+  prevPrices?: Record<string, StationPrices> | null;
 }
 
 const PAGE = 50;
@@ -17,10 +18,12 @@ const PAGE = 50;
 export default function ListView({
   stations, fuelType, onSelectStation,
   favorites = new Set(), onToggleFavorite,
+  prevPrices,
 }: Props) {
   const [sortField, setSortField] = useState<SortField>('price');
   const [sortDir,   setSortDir]   = useState<SortDir>('asc');
   const [page,      setPage]      = useState(1);
+  const [focusedIdx, setFocusedIdx] = useState<number>(-1);
 
   const sorted = useMemo(() => {
     return [...stations].sort((a, b) => {
@@ -52,18 +55,35 @@ export default function ListView({
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortField(field); setSortDir('asc'); }
     setPage(1);
+    setFocusedIdx(-1);
   };
 
   const arrow = (f: SortField) => sortField === f ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '';
 
-  const renderRow = (s: Station, rank: number | null) => {
+  const handleBodyKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setFocusedIdx(i => Math.min(i + 1, slice.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setFocusedIdx(i => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter' && focusedIdx >= 0 && focusedIdx < slice.length) {
+      onSelectStation(slice[focusedIdx]);
+    }
+  }, [focusedIdx, slice, onSelectStation]);
+
+  const renderRow = (s: Station, rank: number | null, sliceIdx?: number) => {
     const price = s.prices?.[fuelType];
     const isFav = favorites.has(s.id);
+    const trend = priceTrend(price, prevPrices?.[s.id]?.[fuelType]);
+    const isFocused = sliceIdx != null && sliceIdx === focusedIdx;
     return (
       <tr
         key={s.id}
-        onClick={() => onSelectStation(s)}
-        className="station-row border-b border-white/3 cursor-pointer transition-colors"
+        onClick={() => { onSelectStation(s); setFocusedIdx(sliceIdx ?? -1); }}
+        className={`station-row border-b border-white/3 cursor-pointer transition-colors
+          ${!s.hasData ? 'opacity-50' : ''}
+          ${isFocused ? 'ring-1 ring-inset ring-emerald-500/50 bg-emerald-500/5' : ''}`}
       >
         <td className="pl-4 py-2.5 text-zinc-600 text-xs tabular-nums">{rank ?? '★'}</td>
         <td className="pl-2 py-2.5">
@@ -96,6 +116,12 @@ export default function ListView({
         <td className={`py-2.5 text-right font-bold tabular-nums
           ${price != null ? 'text-emerald-300' : 'text-zinc-600'}`}>
           {formatMXN(price)}
+          {trend && (
+            <span className={`ml-1 text-[10px] font-normal
+              ${trend === '▲' ? 'text-orange-400' : trend === '▼' ? 'text-blue-400' : 'text-zinc-600'}`}>
+              {trend}
+            </span>
+          )}
         </td>
         <td className="py-2.5 text-right text-zinc-400 tabular-nums text-xs hidden sm:table-cell">
           {formatMXN(s.prices?.premium)}
@@ -141,7 +167,11 @@ export default function ListView({
               <th className="text-right pr-4 py-2 font-medium">Dist.</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody
+            tabIndex={0}
+            onKeyDown={handleBodyKeyDown}
+            className="focus:outline-none"
+          >
             {/* Favorites section */}
             {favoriteStations.length > 0 && (
               <>
@@ -158,7 +188,7 @@ export default function ListView({
                 </tr>
               </>
             )}
-            {slice.map((s, i) => renderRow(s, (page - 1) * PAGE + i + 1))}
+            {slice.map((s, i) => renderRow(s, (page - 1) * PAGE + i + 1, i))}
           </tbody>
         </table>
 
@@ -173,12 +203,12 @@ export default function ListView({
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 py-2 border-t border-white/5 bg-[#0d0d1a] shrink-0">
-          <button disabled={page===1} onClick={() => setPage(p=>p-1)}
+          <button disabled={page===1} onClick={() => { setPage(p=>p-1); setFocusedIdx(-1); }}
             className="px-3 py-1 text-xs rounded bg-white/5 disabled:opacity-30 hover:bg-white/10 transition-colors">
             ‹ Ant
           </button>
           <span className="text-xs text-zinc-500">{page} / {totalPages}</span>
-          <button disabled={page===totalPages} onClick={() => setPage(p=>p+1)}
+          <button disabled={page===totalPages} onClick={() => { setPage(p=>p+1); setFocusedIdx(-1); }}
             className="px-3 py-1 text-xs rounded bg-white/5 disabled:opacity-30 hover:bg-white/10 transition-colors">
             Sig ›
           </button>
