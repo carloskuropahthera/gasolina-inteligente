@@ -39,18 +39,22 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    // Fallback: always clear loading after 2s even if imports or tiles hang
+    // Fallback: always clear loading after 2s even if imports hang
     const loadingFallback = setTimeout(() => setLoading(false), 2000);
 
-    Promise.all([
-      import('leaflet'),
-      import('leaflet/dist/leaflet.css' as never),
-      import('leaflet.markercluster/dist/leaflet.markercluster.js' as never),
-      import('leaflet.markercluster/dist/MarkerCluster.css' as never),
-      import('leaflet.markercluster/dist/MarkerCluster.Default.css' as never),
-    ]).then(([Lmod]) => {
+    // leaflet.markercluster is a UMD module that reads window.L at parse time,
+    // so we must import leaflet first, set window.L, then import markercluster.
+    const run = async () => {
+      const { default: L } = await import('leaflet');
+      await import('leaflet/dist/leaflet.css' as never);
+      (window as typeof window & { L: typeof L }).L = L; // required by markercluster UMD
+      await import('leaflet.markercluster/dist/leaflet.markercluster.js' as never);
+      await Promise.all([
+        import('leaflet.markercluster/dist/MarkerCluster.css' as never),
+        import('leaflet.markercluster/dist/MarkerCluster.Default.css' as never),
+      ]);
+
       if (mapRef.current) return; // Guard: prevent double-init in React Strict Mode
-      const L = Lmod.default;
       LRef.current = L;
 
       const map = L.map(containerRef.current!, {
@@ -112,7 +116,8 @@ export default function MapView({ stations, fuelType, userLocation, selectedStat
           m.setIcon(makeIcon(L, m._giStation, ft, st, zone === 'label'));
         });
       });
-    });
+    };
+    run().catch(e => console.error('[MapView] init failed:', e));
 
     return () => {
       clearTimeout(loadingFallback);
