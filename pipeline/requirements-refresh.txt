@@ -1,0 +1,16 @@
+# Slim requirements for the daily CRE price refresh workflow.
+# Only includes packages actually imported by the refresh path.
+# Full pipeline dev install: pip install -r requirements.txt
+
+httpx>=0.26.0
+tenacity>=8.2.3
+click>=8.1.7
+structlog>=24.1.0
+rich>=13.7.0
+pandas>=2.2.0
+sqlalchemy>=2.0.27
+geohash2>=1.1
+rapidfuzz>=3.6.1
+Unidecode>=1.3.8
+python-dateutil>=2.9.0
+pytz>=2024.1
