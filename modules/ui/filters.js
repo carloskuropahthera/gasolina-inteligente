@@ -179,7 +179,11 @@ export function parseURLHash() {
   const params = new URLSearchParams(raw);
   const update = {};
 
-  if (params.has('fuel'))    update.fuelType = params.get('fuel');
+  const VALID_FUEL_TYPES = ['regular', 'premium', 'diesel', 'regular_plus'];
+  if (params.has('fuel')) {
+    const fuel = params.get('fuel');
+    if (VALID_FUEL_TYPES.includes(fuel)) update.fuelType = fuel;
+  }
   if (params.has('brands'))  update.brands   = params.get('brands').split(',').filter(Boolean);
   if (params.has('brand'))   update.brands   = [params.get('brand')];   // legacy compat
   if (params.has('states'))  update.states   = params.get('states').split(',').filter(Boolean);

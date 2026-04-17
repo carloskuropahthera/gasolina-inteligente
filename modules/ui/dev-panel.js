@@ -8,7 +8,7 @@ import { generateMatrix, estimateGenerationTime }          from '../precompute/d
 import * as storage from '../storage/storage-interface.js';
 import { getState, setState, subscribeAll }                from '../utils/state.js';
 import { getHistory, clearHistory }                        from '../utils/logger.js';
-import { formatDuration, downloadJSON }                    from '../utils/helpers.js';
+import { formatDuration, downloadJSON, esc }               from '../utils/helpers.js';
 import { createLogger }                                    from '../utils/logger.js';
 
 const log = createLogger('dev-panel');
@@ -259,7 +259,7 @@ function attachDevListeners() {
     const results = await testAllProxies(PLACES_URL);
     if (el) el.innerHTML = results.map(r =>
       `<div class="${r.success ? 'test-ok' : 'test-fail'}">
-        ${r.success ? '✓' : '✗'} ${r.name} — ${r.latencyMs}ms ${r.error ? `(${r.error})` : ''}
+        ${r.success ? '✓' : '✗'} ${r.name} — ${r.latencyMs}ms ${r.error ? `(${esc(r.error)})` : ''}
       </div>`
     ).join('');
   });

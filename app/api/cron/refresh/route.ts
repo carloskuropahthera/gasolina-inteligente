@@ -38,7 +38,8 @@ function parseXMLRecords(xml: string, tagName: string): Record<string, string>[]
 export async function GET(req: Request) {
   // Verify this is called by Vercel Cron (or allow in dev)
   const authHeader = req.headers.get('authorization');
-  if (process.env.NODE_ENV === 'production' && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const skipAuth = process.env.NODE_ENV !== 'production' && process.env.SKIP_CRON_AUTH === 'true';
+  if (!skipAuth && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
