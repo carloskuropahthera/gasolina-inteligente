@@ -38,7 +38,10 @@ jobs:
             pipeline/data/staging/gasolina_staging.db
             pipeline/data/curated/gasolina_master.db
             pipeline/data/raw/
-          key: pipeline-db-${{ github.run_number }}
+          # Stable key: invalidates only on schema/migration changes; otherwise
+          # reuses prior cache so daily runs see yesterday's history continuity.
+          # Bump the trailing -vN to force a fresh cache.
+          key: pipeline-db-${{ hashFiles('pipeline/storage/db.py', 'pipeline/models/**') }}-v1
           restore-keys: |
             pipeline-db-
 
